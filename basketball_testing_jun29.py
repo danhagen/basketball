@@ -1,4 +1,5 @@
 
+import ipdb
 import numpy as np
 import sympy as sp
 import matplotlib.pyplot as plt
@@ -102,7 +103,6 @@ AngularVelocities = np.dot(inv(jacobian(Angle1Final,Angle2Final,Angle3Final)),En
 Angle1Bounds = [Angle1Initial, DegreeToRadianFactor*140]
 AngularVelocity1Initial = 0
 AngularVelocity1Final = AngularVelocities[0]
-Angle1Conditions = [AngularVelocity1Initial, Angle1Initial, Angle1Final, AngularVelocity1Final]
 
 Angle2Bounds = [0, DegreeToRadianFactor*135]
 AngularVelocity2Initial = 0
@@ -113,48 +113,63 @@ Angle3Bounds = [DegreeToRadianFactor*-90, 0]
 AngularVelocity3Initial = 0
 AngularVelocity3Final = AngularVelocities[2]
 Angle3Conditions = [AngularVelocity3Initial, Angle3Initial, Angle3Final, AngularVelocity3Final]
-
-def c_coefficients(RandomMiddleAngle,RandomMiddleTime,AngleConditions):
-	C = np.matrix([	[2*(RandomMiddleTime-0), 	(RandomMiddleTime-0), 		0							],   \
-					[(RandomMiddleTime-0), 		2*(EndTime-0), 				(EndTime-RandomMiddleTime)	],   \
-					[0,							(EndTime-RandomMiddleTime),	2*(EndTime-RandomMiddleTime)] ], \
+def c_matrix(x1,x2,x3):
+	C = np.matrix([	[	2*(x2-x1), 	(x2-x1), 			0			],   \
+					[	(x2-x1), 		2*(x3-x1), 		(x3-x2)		],   \
+					[	0,				(x3-x2),		2*(x3-x2)	] 	], \
 					float)
-	y = np.matrix([	[3*(RandomMiddleAngle-AngleConditions[1])/(RandomMiddleTime-0) - 3*AngleConditions[0]],  \
-					[3*(AngleConditions[2]-RandomMiddleAngle)/(EndTime-RandomMiddleTime) - 3*(RandomMiddleAngle-AngleConditions[1])/(RandomMiddleTime-0)],  \
-					[3*AngleConditions[3] - 3*(AngleConditions[2]-RandomMiddleAngle)/(EndTime-RandomMiddleTime)] ],  \
+	return(C)
+def y_vector(x1,x2,x3,y1,y2,y3,dyi,dyf):
+	y = np.array([	[	3*(y2-y1)/(x2-x1) - 3*dyi 				],  \
+					[	3*(y3-y2)/(x3-x2) - 3*(y2-y1)/(x2-x1) 	],  \
+					[	3*dyf - 3*(y3-y2)/(x3-x2) 				] 	],  \
 					float)
-	CCoefficients = np.dot(inv(C),y)
+	return(y)
+def c_coefficients(x1,x2,x3,y1,y2,y3,dyi,dyf):
+	C = c_matrix(x1,x2,x3)
+	y = y_vector(x1,x2,x3,y1,y2,y3,dyi,dyf)
+	CCoefficients = np.dot(inv(C),np.array(y).astype(float))
 	return(np.array(CCoefficients).astype(float))
 
-def d_coefficients(RandomMiddleTime,CCoefficients):
-	DCoefficients = np.array([	[(CCoefficients[1]-CCoefficients[0])/(3*(RandomMiddleTime-0))],  \
-								[(CCoefficients[2]-CCoefficients[1])/(3*(EndTime-RandomMiddleTime))] ],  \
+def d_coefficients(x1,x2,x3,CCoefficients):
+	DCoefficients = np.array([	[	(CCoefficients[1]-CCoefficients[0])/(3*(x2-x1))	],  \
+								[	(CCoefficients[2]-CCoefficients[1])/(3*(x3-x2))	] ],  \
 								float)
 	return(DCoefficients)
 
-def b_coefficients(RandomMiddleTime,RandomMiddleAngle,AngleConditions,CCoefficients,DCoefficients):
-	BCoefficients = np.array([((RandomMiddleAngle-AngleConditions[1])/(RandomMiddleTime-0)-CCoefficients[0]*(RandomMiddleTime-0) - DCoefficients[0]*((RandomMiddleTime-0)**2)),  \
-							((AngleConditions[2]-RandomMiddleAngle)/(EndTime-RandomMiddleTime)-CCoefficients[1]*(EndTime-RandomMiddleTime) - DCoefficients[1]*((EndTime-RandomMiddleTime)**2)) ]).astype(float)
+def b_coefficients(x1,x2,x3,y1,y2,y3,CCoefficients,DCoefficients):
+	BCoefficients = np.array([	((y2-y1)/(x2-x1)-CCoefficients[0]*(x2-x1) - DCoefficients[0]*((x2-x1)**2)),  \
+								((y3-y2)/(x3-x2)-CCoefficients[1]*(x3-x2) - DCoefficients[1]*((x3-x2)**2)) 	]).astype(float)
 	return(BCoefficients)
 
-def a_coefficients(RandomMiddleAngle, AngleConditions):
-	ACoefficients = np.array([	np.float(AngleConditions[1]),    \
-								RandomMiddleAngle  ])
+def test_b_coefficients(x1,x2,x3,y1,y2,y3,CCoefficients,DCoefficients,dyi):
+	B = test_b_coefficients(x1,x2,x3,y1,y2,y3,CCoefficients,DCoefficients)
+	assert B[0]==dyi, "First b coefficient (%f) does not equal initial slope (%f)." (B[0],dyi)
+
+def a_coefficients(y1,y2):
+	ACoefficients = np.array([	y1,    \
+								y2  ]).astype(float)
 	return(ACoefficients)
 
-def cubic_spline(AngleBounds, AngleConditions, Time):
-	RandomMiddleTime = np.random.uniform(0,EndTime)
-	RandomMiddleAngle = np.random.uniform(AngleBounds[0],AngleBounds[1])
-	C = c_coefficients(RandomMiddleTime,RandomMiddleAngle,AngleConditions)
-	D = d_coefficients(RandomMiddleTime,C)
-	B = b_coefficients(RandomMiddleTime,RandomMiddleAngle,AngleConditions,C,D)
-	A = a_coefficients(RandomMiddleAngle, AngleConditions)
-	AngleSpline = np.piecewise(Time,[Time < RandomMiddleTime, Time >= RandomMiddleTime], \
-					[lambda Time: A[0] + B[0]*(Time-0) + C[0]*(Time-0)**2 + D[0]*(Time-0)**3, \
-					lambda Time: A[1] + B[1]*(Time-RandomMiddleTime) + C[1]*(Time-RandomMiddleTime)**2 + D[1]*(Time-RandomMiddleTime)**3])
-	return(AngleSpline,B)
 
-Angle1Spline,B = cubic_spline(Angle1Bounds,Angle1Conditions,Time)
+
+def clamped_cubic_spline(xi,xf,yi,yf,dyi,dyf,ymin,ymax,X):
+	x2 = np.random.uniform(xi,xf)
+	y2 = np.random.uniform(ymin,ymax)
+	C = c_coefficients(xi,x2,xf,yi,y2,yf,dyi,dyf)
+	D = d_coefficients(xi,x2,xf,C)
+	B = b_coefficients(xi,x2,xf,yi,y2,yf,C,D)
+	A = a_coefficients(yi,y2)
+	Expected_dyf = B[1] + 2*C[1]*(xf-x2) + 3*D[1]*(xf-x2)**2
+	assert abs(Expected_dyf-dyf)<0.001,"Problem with Endpoint Slope"
+	assert abs((A[0] + B[0]*(x2-xi) + C[0]*(x2-xi)**2 + D[0]*(x2-xi)**3) - A[1])<0.001, "Jump Discontinuity at t = %f!" %x2
+	ClampedSpline = np.piecewise(X,[X <= x2, X > x2], \
+					[lambda X: A[0] + B[0]*(X-xi) + C[0]*(X-xi)**2 + D[0]*(X-xi)**3, \
+					lambda X: A[1] + B[1]*(X-x2) + C[1]*(X-x2)**2 + D[1]*(X-x2)**3])
+	return(ClampedSpline)
+
+Angle1Spline = clamped_cubic_spline(0,EndTime,Angle1Initial,Angle1Final,AngularVelocity1Initial, \
+										AngularVelocity1Final,Angle1Bounds[0],Angle1Bounds[1],Time)
 plt.plot(Time,Angle1Spline)
 plt.show()
 
