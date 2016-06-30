@@ -154,24 +154,50 @@ def a_coefficients(y1,y2):
 
 
 def clamped_cubic_spline(xi,xf,yi,yf,dyi,dyf,ymin,ymax,X):
-	x2 = np.random.uniform(xi,xf)
-	y2 = np.random.uniform(ymin,ymax)
-	C = c_coefficients(xi,x2,xf,yi,y2,yf,dyi,dyf)
-	D = d_coefficients(xi,x2,xf,C)
-	B = b_coefficients(xi,x2,xf,yi,y2,yf,C,D)
-	A = a_coefficients(yi,y2)
-	Expected_dyf = B[1] + 2*C[1]*(xf-x2) + 3*D[1]*(xf-x2)**2
-	assert abs(Expected_dyf-dyf)<0.001,"Problem with Endpoint Slope"
-	assert abs((A[0] + B[0]*(x2-xi) + C[0]*(x2-xi)**2 + D[0]*(x2-xi)**3) - A[1])<0.001, "Jump Discontinuity at t = %f!" %x2
-	ClampedSpline = np.piecewise(X,[X <= x2, X > x2], \
-					[lambda X: A[0] + B[0]*(X-xi) + C[0]*(X-xi)**2 + D[0]*(X-xi)**3, \
-					lambda X: A[1] + B[1]*(X-x2) + C[1]*(X-x2)**2 + D[1]*(X-x2)**3])
+	i = 0
+	while i < 1000:
+		x2 = np.random.uniform(xi,xf)
+		y2 = np.random.uniform(ymin,ymax)
+		C = c_coefficients(xi,x2,xf,yi,y2,yf,dyi,dyf)
+		D = d_coefficients(xi,x2,xf,C)
+		B = b_coefficients(xi,x2,xf,yi,y2,yf,C,D)
+		A = a_coefficients(yi,y2)
+		Expected_dyf = B[1] + 2*C[1]*(xf-x2) + 3*D[1]*(xf-x2)**2
+		assert abs(Expected_dyf-dyf)<0.001,"Problem with Endpoint Slope"
+		assert abs((A[0] + B[0]*(x2-xi) + C[0]*(x2-xi)**2 + D[0]*(x2-xi)**3) - A[1])<0.001, "Jump Discontinuity at t = %f!" %x2
+		if i == 0:
+			ClampedSpline = np.piecewise(X,[X <= x2, X > x2], \
+										[lambda X: A[0] + B[0]*(X-xi) + C[0]*(X-xi)**2 + D[0]*(X-xi)**3, \
+										lambda X: A[1] + B[1]*(X-x2) + C[1]*(X-x2)**2 + D[1]*(X-x2)**3])
+			if max(ClampedSpline)<= ymax and min(ClampedSpline)>=ymin:
+				i+=1
+		elif i == 1:
+			NextEntry = np.piecewise(X,[X <= x2, X > x2], \
+										[lambda X: A[0] + B[0]*(X-xi) + C[0]*(X-xi)**2 + D[0]*(X-xi)**3, \
+										lambda X: A[1] + B[1]*(X-x2) + C[1]*(X-x2)**2 + D[1]*(X-x2)**3])
+			if max(NextEntry)<= ymax and min(NextEntry)>=ymin:
+				ClampedSpline = np.concatenate(([ClampedSpline], [NextEntry]), axis = 0)
+				i+=1
+		else:
+			NextEntry = np.piecewise(X,[X <= x2, X > x2], \
+										[lambda X: A[0] + B[0]*(X-xi) + C[0]*(X-xi)**2 + D[0]*(X-xi)**3, \
+										lambda X: A[1] + B[1]*(X-x2) + C[1]*(X-x2)**2 + D[1]*(X-x2)**3])
+			if max(NextEntry)<= ymax and min(NextEntry)>=ymin:
+				ClampedSpline = np.concatenate((ClampedSpline, [NextEntry]), axis = 0)
+				i+=1
 	return(ClampedSpline)
 
 Angle1Spline = clamped_cubic_spline(0,EndTime,Angle1Initial,Angle1Final,AngularVelocity1Initial, \
 										AngularVelocity1Final,Angle1Bounds[0],Angle1Bounds[1],Time)
-plt.plot(Time,Angle1Spline)
-plt.show()
+
+def plot_spline_results(Time,AngleSplines):
+	plt.figure()
+	for i in range(0,AngleSplines.shape[0]):
+		plt.plot(Time,AngleSplines[i])
+	plt.show()
+
+#plot_spline_results(Time,Angle1Spline)
+
 
 
 
