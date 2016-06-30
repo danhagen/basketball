@@ -1,6 +1,7 @@
 
 import numpy as np
 import sympy as sp
+import matplotlib.pyplot as plt
 from numpy import sin,cos,tan,sqrt
 from numpy.linalg import inv
 
@@ -17,15 +18,6 @@ PositionInY = []
 HeightInInches = 71
 DegreeToRadianFactor = np.pi/180
 
-Angle1Initial = DegreeToRadianFactor*-10
-Angle1Final = DegreeToRadianFactor*120
-
-Angle2Initial = DegreeToRadianFactor*85
-Angle2Final = DegreeToRadianFactor*84
-
-Angle3Initial = DegreeToRadianFactor*0
-Angle3Final = DegreeToRadianFactor*-35
-
 #global ShoulderToElbowLength,ForearmLength,HandLength,Height
 Height = HeightInInches*2.54
 ShoulderToElbowLength = 0.186*Height
@@ -34,6 +26,14 @@ HandLength = 0.108*Height
 ReleaseAngle = DegreeToRadianFactor*30
 ShotDepth = 457.2
 
+Angle1Initial = DegreeToRadianFactor*-10
+Angle1Final = DegreeToRadianFactor*120
+
+Angle2Initial = DegreeToRadianFactor*85
+Angle2Final = DegreeToRadianFactor*84
+
+Angle3Initial = DegreeToRadianFactor*0
+Angle3Final = DegreeToRadianFactor*-35
 
 def position_in_x(Angle1, Angle2, Angle3):
 	PositionInX = ShoulderToElbowLength*sin(Angle1) \
@@ -98,9 +98,65 @@ def jacobian(Angle1Final,Angle2Final,Angle3Final):
 
 JacobianMatrix = jacobian(Angle1Final,Angle2Final,Angle3Final)
 AngularVelocities = np.dot(inv(jacobian(Angle1Final,Angle2Final,Angle3Final)),EndpointVelocity)
-#print(AngularVelocities)
 
+Angle1Bounds = [Angle1Initial, DegreeToRadianFactor*140]
+AngularVelocity1Initial = 0
+AngularVelocity1Final = AngularVelocities[0]
+Angle1Conditions = [AngularVelocity1Initial, Angle1Initial, Angle1Final, AngularVelocity1Final]
 
+Angle2Bounds = [0, DegreeToRadianFactor*135]
+AngularVelocity2Initial = 0
+AngularVelocity2Final = AngularVelocities[1]
+Angle2Conditions = [AngularVelocity1Initial, Angle1Initial, Angle1Final, AngularVelocity1Final]
+
+Angle3Bounds = [DegreeToRadianFactor*-90, 0]
+AngularVelocity3Initial = 0
+AngularVelocity3Final = AngularVelocities[2]
+Angle3Conditions = [AngularVelocity3Initial, Angle3Initial, Angle3Final, AngularVelocity3Final]
+
+def c_coefficients(RandomMiddleAngle,RandomMiddleTime,AngleConditions):
+	C = np.matrix([	[2*(RandomMiddleTime-0), 	(RandomMiddleTime-0), 		0							],   \
+					[(RandomMiddleTime-0), 		2*(EndTime-0), 				(EndTime-RandomMiddleTime)	],   \
+					[0,							(EndTime-RandomMiddleTime),	2*(EndTime-RandomMiddleTime)] ], \
+					float)
+	y = np.matrix([	[3*(RandomMiddleAngle-AngleConditions[1])/(RandomMiddleTime-0) - 3*AngleConditions[0]],  \
+					[3*(AngleConditions[2]-RandomMiddleAngle)/(EndTime-RandomMiddleTime) - 3*(RandomMiddleAngle-AngleConditions[1])/(RandomMiddleTime-0)],  \
+					[3*AngleConditions[3] - 3*(AngleConditions[2]-RandomMiddleAngle)/(EndTime-RandomMiddleTime)] ],  \
+					float)
+	CCoefficients = np.dot(inv(C),y)
+	return(np.array(CCoefficients).astype(float))
+
+def d_coefficients(RandomMiddleTime,CCoefficients):
+	DCoefficients = np.array([	[(CCoefficients[1]-CCoefficients[0])/(3*(RandomMiddleTime-0))],  \
+								[(CCoefficients[2]-CCoefficients[1])/(3*(EndTime-RandomMiddleTime))] ],  \
+								float)
+	return(DCoefficients)
+
+def b_coefficients(RandomMiddleTime,RandomMiddleAngle,AngleConditions,CCoefficients,DCoefficients):
+	BCoefficients = np.array([((RandomMiddleAngle-AngleConditions[1])/(RandomMiddleTime-0)-CCoefficients[0]*(RandomMiddleTime-0) - DCoefficients[0]*((RandomMiddleTime-0)**2)),  \
+							((AngleConditions[2]-RandomMiddleAngle)/(EndTime-RandomMiddleTime)-CCoefficients[1]*(EndTime-RandomMiddleTime) - DCoefficients[1]*((EndTime-RandomMiddleTime)**2)) ]).astype(float)
+	return(BCoefficients)
+
+def a_coefficients(RandomMiddleAngle, AngleConditions):
+	ACoefficients = np.array([	np.float(AngleConditions[1]),    \
+								RandomMiddleAngle  ])
+	return(ACoefficients)
+
+def cubic_spline(AngleBounds, AngleConditions, Time):
+	RandomMiddleTime = np.random.uniform(0,EndTime)
+	RandomMiddleAngle = np.random.uniform(AngleBounds[0],AngleBounds[1])
+	C = c_coefficients(RandomMiddleTime,RandomMiddleAngle,AngleConditions)
+	D = d_coefficients(RandomMiddleTime,C)
+	B = b_coefficients(RandomMiddleTime,RandomMiddleAngle,AngleConditions,C,D)
+	A = a_coefficients(RandomMiddleAngle, AngleConditions)
+	AngleSpline = np.piecewise(Time,[Time < RandomMiddleTime, Time >= RandomMiddleTime], \
+					[lambda Time: A[0] + B[0]*(Time-0) + C[0]*(Time-0)**2 + D[0]*(Time-0)**3, \
+					lambda Time: A[1] + B[1]*(Time-RandomMiddleTime) + C[1]*(Time-RandomMiddleTime)**2 + D[1]*(Time-RandomMiddleTime)**3])
+	return(AngleSpline,B)
+
+Angle1Spline,B = cubic_spline(Angle1Bounds,Angle1Conditions,Time)
+plt.plot(Time,Angle1Spline)
+plt.show()
 
 
 
