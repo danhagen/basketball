@@ -107,12 +107,11 @@ AngularVelocity1Final = AngularVelocities[0]
 Angle2Bounds = [0, DegreeToRadianFactor*135]
 AngularVelocity2Initial = 0
 AngularVelocity2Final = AngularVelocities[1]
-Angle2Conditions = [AngularVelocity1Initial, Angle1Initial, Angle1Final, AngularVelocity1Final]
 
 Angle3Bounds = [DegreeToRadianFactor*-90, 0]
 AngularVelocity3Initial = 0
 AngularVelocity3Final = AngularVelocities[2]
-Angle3Conditions = [AngularVelocity3Initial, Angle3Initial, Angle3Final, AngularVelocity3Final]
+
 def c_matrix(x1,x2,x3):
 	C = np.matrix([	[	2*(x2-x1), 	(x2-x1), 			0			],   \
 					[	(x2-x1), 		2*(x3-x1), 		(x3-x2)		],   \
@@ -130,38 +129,34 @@ def c_coefficients(x1,x2,x3,y1,y2,y3,dyi,dyf):
 	y = y_vector(x1,x2,x3,y1,y2,y3,dyi,dyf)
 	CCoefficients = np.dot(inv(C),np.array(y).astype(float))
 	return(np.array(CCoefficients).astype(float))
-
 def d_coefficients(x1,x2,x3,CCoefficients):
 	DCoefficients = np.array([	[	(CCoefficients[1]-CCoefficients[0])/(3*(x2-x1))	],  \
 								[	(CCoefficients[2]-CCoefficients[1])/(3*(x3-x2))	] ],  \
 								float)
 	return(DCoefficients)
-
 def b_coefficients(x1,x2,x3,y1,y2,y3,CCoefficients,DCoefficients):
 	BCoefficients = np.array([	((y2-y1)/(x2-x1)-CCoefficients[0]*(x2-x1) - DCoefficients[0]*((x2-x1)**2)),  \
 								((y3-y2)/(x3-x2)-CCoefficients[1]*(x3-x2) - DCoefficients[1]*((x3-x2)**2)) 	]).astype(float)
 	return(BCoefficients)
-
 def test_b_coefficients(x1,x2,x3,y1,y2,y3,CCoefficients,DCoefficients,dyi):
 	B = test_b_coefficients(x1,x2,x3,y1,y2,y3,CCoefficients,DCoefficients)
 	assert B[0]==dyi, "First b coefficient (%f) does not equal initial slope (%f)." (B[0],dyi)
-
 def a_coefficients(y1,y2):
 	ACoefficients = np.array([	y1,    \
 								y2  ]).astype(float)
 	return(ACoefficients)
-
-
-
+def spline_coefficients(x1,x2,x3,y1,y2,y3,dyi,dyf):
+	C = c_coefficients(x1,x2,x3,y1,y2,y3,dyi,dyf)
+	D = d_coefficients(x1,x2,x3,C)
+	B = b_coefficients(x1,x2,x3,y1,y2,y3,C,D)
+	A = a_coefficients(y1,y2)
+	return(A,B,C,D)
 def clamped_cubic_spline(xi,xf,yi,yf,dyi,dyf,ymin,ymax,X):
 	i = 0
 	while i < 1000:
 		x2 = np.random.uniform(xi,xf)
 		y2 = np.random.uniform(ymin,ymax)
-		C = c_coefficients(xi,x2,xf,yi,y2,yf,dyi,dyf)
-		D = d_coefficients(xi,x2,xf,C)
-		B = b_coefficients(xi,x2,xf,yi,y2,yf,C,D)
-		A = a_coefficients(yi,y2)
+		A,B,C,D = spline_coefficients(xi,x2,xf,yi,y2,yf,dyi,dyf)
 		Expected_dyf = B[1] + 2*C[1]*(xf-x2) + 3*D[1]*(xf-x2)**2
 		assert abs(Expected_dyf-dyf)<0.001,"Problem with Endpoint Slope"
 		assert abs((A[0] + B[0]*(x2-xi) + C[0]*(x2-xi)**2 + D[0]*(x2-xi)**3) - A[1])<0.001, "Jump Discontinuity at t = %f!" %x2
@@ -189,6 +184,10 @@ def clamped_cubic_spline(xi,xf,yi,yf,dyi,dyf,ymin,ymax,X):
 
 Angle1Spline = clamped_cubic_spline(0,EndTime,Angle1Initial,Angle1Final,AngularVelocity1Initial, \
 										AngularVelocity1Final,Angle1Bounds[0],Angle1Bounds[1],Time)
+Angle2Spline = clamped_cubic_spline(0,EndTime,Angle2Initial,Angle2Final,AngularVelocity2Initial, \
+										AngularVelocity2Final,Angle2Bounds[0],Angle2Bounds[1],Time)
+Angle3Spline = clamped_cubic_spline(0,EndTime,Angle3Initial,Angle3Final,AngularVelocity3Initial, \
+										AngularVelocity3Final,Angle3Bounds[0],Angle3Bounds[1],Time)
 
 def plot_spline_results(Time,AngleSplines):
 	plt.figure()
@@ -196,7 +195,9 @@ def plot_spline_results(Time,AngleSplines):
 		plt.plot(Time,AngleSplines[i])
 	plt.show()
 
-#plot_spline_results(Time,Angle1Spline)
+plot_spline_results(Time,Angle1Spline)
+plot_spline_results(Time,Angle2Spline)
+plot_spline_results(Time,Angle3Spline)
 
 
 
