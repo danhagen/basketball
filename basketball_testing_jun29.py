@@ -113,12 +113,11 @@ AngularVelocity3Initial = 0
 AngularVelocity3Final = AngularVelocities[2]
 
 def c_matrix(x1,x2,x3):
-	C = np.matrix([	[	2*(x2-x1), 	(x2-x1), 			0			],   \
+	C = np.matrix([	[	2*(x2-x1), 		(x2-x1), 			0			],   \
 					[	(x2-x1), 		2*(x3-x1), 		(x3-x2)		],   \
 					[	0,				(x3-x2),		2*(x3-x2)	] 	], \
 					float)
 	return(C)
-ipdb.set_trace()
 def y_vector(x1,x2,x3,y1,y2,y3,dyi,dyf):
 	y = np.array([	[	3*(y2-y1)/(x2-x1) - 3*dyi 				],  \
 					[	3*(y3-y2)/(x3-x2) - 3*(y2-y1)/(x2-x1) 	],  \
@@ -152,34 +151,72 @@ def spline_coefficients(x1,x2,x3,y1,y2,y3,dyi,dyf):
 	B = b_coefficients(x1,x2,x3,y1,y2,y3,C,D)
 	A = a_coefficients(y1,y2)
 	return(A,B,C,D)
+def generate_random_point(xmin,xmax,ymin,ymax):
+	x_rand = np.random.uniform(xmin,xmax)
+	y_rand = np.random.uniform(ymin,ymax)
+	return(x_rand,y_rand)
+def test_endpoint_slope(b,c,d,x_n_minus_1,x_n,expected_slope):
+	"""
+	Takes in the cubic spline coefficients for the derivative of y = a + b*(x-x_n_minus_1) + c*(x-x_n_minus_1)**2 + d*(x-x_n_minus_1)**3 
+	(y' = b + 2*c*(x-x_n_minus_1) + 3*d*(x-x_n_minus_1)**2)	for the last piecewise polynomial and tests to see if the expected slope at 
+	the endpoint is equal to the actual	endpoint slope. The variable x_n_minus_1 is the initial value of the final piecewise polynomial 
+	and x_n is the final data point. Returns TRUE if they are equal.
+
+	"""
+	actual_slope = b + 2*c*(x_n-x_n_minus_1) + 3*d*(x_n-x_n_minus_1)**2
+	result = abs(actual_slope-expected_slope)<0.001
+	return(result)
+def test_for_discontinuity(a_n,b_n,c_n,d_n,x_n,x_n_plus_1,y_n_plus_1):
+	"""
+	Takes in the coefficients for a cubic spline polynomial y = a_n + b_n*(x-x_n) + c_n*(x-x_n)**2 + d_n*(x-x_n)**3
+	and tests to see if the final y value for this piecewise polynomial is equal to the initial y value of the next 
+	piecewise polynomial (i.e. when x = x_n_plus_1). The variable x_n is the initial x value of the preceding 
+	polynomial, and x_n_plus_1 is the transition value from one polynomial to the next. y_n_plus_1 is the initial y
+	value for the next piecewise polynomial. 
+	"""
+	y_n_final = a_n + b_n*(x_n_plus_1-x_n) + c_n*(x_n_plus_1-x_n)**2 + d_n*(x_n_plus_1-x_n)**3
+	result = abs(y_n_final-y_n_plus_1)<0.001
+	return(result)
+def piecewise_for_2_intervals(x_initial,x_transition,A,B,C,D,X):
+	"""
+	This is to generate a piecewise polynomial array for a cubic spline that has one break ONLY. A, B, C, and D 
+	must each have two elements corresponding to the coefficients of each polynomial. x_initial is the initial 
+	x value for the first polynomial and x_transition is the final x value for the first polynomial AND the 
+	initial x value for the second polynomial (thus being the transition x value). X is a 1D array of the
+	independent variable. Returns an array with len(result)=len(X).
+	"""
+	result = np.piecewise(X,[X <= x_transition, X > x_transition], \
+										[lambda X: A[0] + B[0]*(X-x_initial) + C[0]*(X-x_initial)**2 + D[0]*(X-x_initial)**3, \
+										lambda X: A[1] + B[1]*(X-x_transition) + C[1]*(X-x_transition)**2 + D[1]*(X-x_transition)**3])
+	return(result)
+def is_within_bounds(Spline,ymin,ymax):
+	"""
+	This takes in a 1D Spline array and tests to see if the values are within the allowed bounds [ymin, ymax].
+	Returns TRUE if all values are within bounds.
+
+	"""
+	result = max(Spline)<=ymax and min(Spline)>=ymin
+	return(result)
 def clamped_cubic_spline(xi,xf,yi,yf,dyi,dyf,ymin,ymax,X):
 	i = 0
 	while i < 1000:
-		x2 = np.random.uniform(xi,xf)
-		y2 = np.random.uniform(ymin,ymax)
+		x2,y2 = generate_random_point(xi,xf,ymin,ymax)
 		A,B,C,D = spline_coefficients(xi,x2,xf,yi,y2,yf,dyi,dyf)
-		Expected_dyf = B[1] + 2*C[1]*(xf-x2) + 3*D[1]*(xf-x2)**2
-		assert abs(Expected_dyf-dyf)<0.001,"Problem with Endpoint Slope"
-		assert abs((A[0] + B[0]*(x2-xi) + C[0]*(x2-xi)**2 + D[0]*(x2-xi)**3) - A[1])<0.001, "Jump Discontinuity at t = %f!" %x2
+		assert test_endpoint_slope(B[1],C[1],D[1],x2,xf,dyf),"Problem with Endpoint Slope"
+		assert test_for_discontinuity(A[0],B[0],C[0],D[0],xi,x2,A[1]), "Jump Discontinuity at t = %f!" %x2
 		if i == 0:
-			ClampedSpline = np.piecewise(X,[X <= x2, X > x2], \
-										[lambda X: A[0] + B[0]*(X-xi) + C[0]*(X-xi)**2 + D[0]*(X-xi)**3, \
-										lambda X: A[1] + B[1]*(X-x2) + C[1]*(X-x2)**2 + D[1]*(X-x2)**3])
-			if max(ClampedSpline)<= ymax and min(ClampedSpline)>=ymin:
+			ClampedSpline = piecewise_for_2_intervals(xi,x2,A,B,C,D,X)
+			if is_within_bounds(ClampedSpline, ymin, ymax):
 				i+=1
 		elif i == 1:
-			NextEntry = np.piecewise(X,[X <= x2, X > x2], \
-										[lambda X: A[0] + B[0]*(X-xi) + C[0]*(X-xi)**2 + D[0]*(X-xi)**3, \
-										lambda X: A[1] + B[1]*(X-x2) + C[1]*(X-x2)**2 + D[1]*(X-x2)**3])
-			if max(NextEntry)<= ymax and min(NextEntry)>=ymin:
-				ClampedSpline = np.concatenate(([ClampedSpline], [NextEntry]), axis = 0)
+			NextClampedSpline = piecewise_for_2_intervals(xi,x2,A,B,C,D,X)
+			if is_within_bounds(NextClampedSpline, ymin, ymax):
+				ClampedSpline = np.concatenate(([ClampedSpline], [NextClampedSpline]), axis = 0)
 				i+=1
 		else:
-			NextEntry = np.piecewise(X,[X <= x2, X > x2], \
-										[lambda X: A[0] + B[0]*(X-xi) + C[0]*(X-xi)**2 + D[0]*(X-xi)**3, \
-										lambda X: A[1] + B[1]*(X-x2) + C[1]*(X-x2)**2 + D[1]*(X-x2)**3])
-			if max(NextEntry)<= ymax and min(NextEntry)>=ymin:
-				ClampedSpline = np.concatenate((ClampedSpline, [NextEntry]), axis = 0)
+			NextClampedSpline = piecewise_for_2_intervals(xi,x2,A,B,C,D,X)
+			if is_within_bounds(NextClampedSpline, ymin, ymax):
+				ClampedSpline = np.concatenate((ClampedSpline, [NextClampedSpline]), axis = 0)
 				i+=1
 	return(ClampedSpline)
 
