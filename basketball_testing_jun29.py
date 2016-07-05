@@ -19,7 +19,6 @@ PositionInY = []
 HeightInInches = 71
 DegreeToRadianFactor = np.pi/180
 
-#global ShoulderToElbowLength,ForearmLength,HandLength,Height
 Height = HeightInInches*2.54
 ShoulderToElbowLength = 0.186*Height
 ForearmLength = 0.146*Height
@@ -37,12 +36,17 @@ Angle3Initial = DegreeToRadianFactor*0
 Angle3Final = DegreeToRadianFactor*-35
 
 def position_in_x(Angle1, Angle2, Angle3):
+	"""
+	Takes in the values of Angle1, Angle2, and Angle3 and generates the x position of the endpoint.
+	"""
 	PositionInX = ShoulderToElbowLength*sin(Angle1) \
 					+ ForearmLength*sin(Angle1+Angle2) \
 					+ HandLength*sin(Angle1+Angle2-Angle3)
 	return(PositionInX)
-
 def position_in_y(Angle1,Angle2,Angle3):
+	"""
+	Takes in the values of Angle1, Angle2, and Angle3 and generates the y position of the endpoint.
+	"""
 	PositionInY = -ShoulderToElbowLength*cos(Angle1) \
 					- ForearmLength*cos(Angle1+Angle2) \
 					- HandLength*cos(Angle1+Angle2-Angle3)
@@ -52,28 +56,42 @@ FinalPositionInX = position_in_x(Angle1Final,Angle2Final,Angle3Final)
 FinalPositionInY = position_in_y(Angle1Final,Angle2Final,Angle3Final)
 
 def displacement_in_x(FinalPositionInX,ReleaseAngle,ShotDepth):
+	""" 
+	Utilizes the final endpoint position in x, the release angle, the shot depth and known values of the players
+	height, ball radius, and hoop radius to calculate the total distance the projectile will be from the basket
+	in the x direction.
+	"""
 	FootLength = 0.152*Height
 	BallRadius = 11.9
 	BallDisplacementInX = BallRadius*cos(ReleaseAngle)
 	HoopRadius = 22.9
 	ChangeInX = ShotDepth +  FootLength - FinalPositionInX - BallDisplacementInX - HoopRadius
 	return(ChangeInX/100.)
-
 def displacement_in_y(FinalPositionInY,ReleaseAngle):
+	""" 
+	Utilizes the final endpoint position in y and the release angle as well as known values of the players
+	height, ball radius, and hoop height to calculate the total distance the projectile will be from the basket
+	in the y direction.
+	"""
 	BallRadius = 11.9
 	BallDisplacementInY = BallRadius*sin(ReleaseAngle)
 	HoopHeight = 304.8
 	ChangeInY = HoopHeight - 0.87*Height - FinalPositionInY - BallDisplacementInY
 	return(ChangeInY/100.)
-
 def initial_projectile_velocity(FinalPositionInX, FinalPositionInY, ReleaseAngle, ShotDepth):
-	# VelocityInX = Velocity*cos(ReleaseAngle)
-	# Time = displacement_in_x(...)/VelocityInX = displacement_in_x(...)/(Velocity*cos(ReleaseAngle))
-	# displacement_in_y(...) = VelocityInY*Time - (9.8/2)*Time**2
-	# VelocityInY/VelocityInX = [Velocity*sin(ReleaseAngle)]/[Velocity*cos(ReleaseAngle)] = tan(ReleaseAngle)
-	# VelocityInY*Time = VelocityInY*displacement_in_x(...)/VelocityInX = tan(ReleaseAngle)*displacement_in_x(...)
-	# Time**2 = displacement_in_x(...)**2/VelocityInX**2 = (1/Velocity**2)*displacement_in_x(...)/(cos(ReleaseAngle)**2)
-	# Velocity**2 = (9.8/2)*(displacement_in_x(...)/cos(ReleaseAngle)**2)/(displacement_in_x(...)*tan(ReleaseAngle)-displacement_in_y(...))
+	"""
+	Takes the final endpoint positions in x and y (initial projectile positions) as well as release angle and 
+	shot depth to find the initial velocity of the projectile to make it into the basket. The following logic 
+	helps explain the equation used:
+
+	VelocityInX = Velocity*cos(ReleaseAngle)
+	Time = displacement_in_x(...)/VelocityInX = displacement_in_x(...)/(Velocity*cos(ReleaseAngle))
+	displacement_in_y(...) = VelocityInY*Time - (9.8/2)*Time**2
+	VelocityInY/VelocityInX = [Velocity*sin(ReleaseAngle)]/[Velocity*cos(ReleaseAngle)] = tan(ReleaseAngle)
+	VelocityInY*Time = VelocityInY*displacement_in_x(...)/VelocityInX = tan(ReleaseAngle)*displacement_in_x(...)
+	Time**2 = displacement_in_x(...)**2/VelocityInX**2 = (1/Velocity**2)*displacement_in_x(...)/(cos(ReleaseAngle)**2)
+	Velocity**2 = (9.8/2)*(displacement_in_x(...)/cos(ReleaseAngle)**2)/(displacement_in_x(...)*tan(ReleaseAngle)-displacement_in_y(...))
+	"""
 	Velocity = sqrt((9.8/2.)*(displacement_in_x(FinalPositionInX,ReleaseAngle,ShotDepth)/cos(ReleaseAngle))**2 \
 				/ (displacement_in_x(FinalPositionInX,ReleaseAngle,ShotDepth)*tan(ReleaseAngle) \
 					- displacement_in_y(FinalPositionInY,ReleaseAngle)))
@@ -83,6 +101,11 @@ InitialProjectileVelocity = initial_projectile_velocity(FinalPositionInX, FinalP
 EndpointVelocity = [cos(ReleaseAngle)*InitialProjectileVelocity*100, sin(ReleaseAngle)*InitialProjectileVelocity*100, 0.0]
 
 def jacobian(Angle1Final,Angle2Final,Angle3Final):
+	"""
+	Generates the Jacobian matrix for the geometric model of a three link planar system (i.e. 3 dof's).
+	Final joint angles are then substituted to create the Jacobian matrix of the endpoint in the final release 
+	posture.
+	"""
 	Angle1,Angle2,Angle3 = sp.symbols('Angle1,Angle2,Angle3',real=True)
 	x = ShoulderToElbowLength*sp.sin(Angle1) \
 		+ ForearmLength*sp.sin(Angle1+Angle2) \
