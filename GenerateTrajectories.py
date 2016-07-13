@@ -226,6 +226,7 @@ def generate_random_point(xmin,xmax,ymin,ymax):
 	Generates a random point in Cartesian space such that x is in [xmin, xmax] and y is in [ymin,ymax]. 
 	Number is chosen at random from a uniform distribution. Returns two floats.
 	"""
+	np.random.seed()
 	x_rand = np.random.uniform(xmin,xmax)
 	y_rand = np.random.uniform(ymin,ymax)
 	return(x_rand,y_rand)
@@ -368,8 +369,8 @@ class Spline:
 		extrema_1,extrema_2,extrema_3,extrema_4 = find_extrema()
 		maxima, minima = determine_if_max_or_min(extrema_1,extrema_2,extrema_3,extrema_4,x_min,x_max)
 		return(maxima,minima)
-	def is_initial_slope_positive(self,X):
-		result = min(self.pp_deriv(X[:2501]))>=0
+	def is_initial_slope_positive(self,X,cutoff):
+		result = min(self.pp_deriv(X[:cutoff]))>=0
 		return(result)
 	def is_within_bounds(self,x_min,x_max,y_min,y_max):
 		maxima,minima = self.find_max_and_min(x_min,x_max,y_min,y_max)
@@ -396,7 +397,9 @@ def clamped_cubic_spline(x_initial,x_final,y_initial,y_final,initial_slope,final
 		assert test_for_discontinuity(A[0],B[0],C[0],D[0],x_initial,x_rand,A[1]), "Jump Discontinuity at t = %f!" %x_rand
 		spline_structure = Spline(A,B,C,D,x_initial,x_rand)
 		if options.get("angle") == "Shoulder":
-			options_slope_condition = spline_structure.is_initial_slope_positive(X)
+			options_slope_condition = spline_structure.is_initial_slope_positive(X,2501)
+		elif options.get("angle") == "Elbow":
+			options_slope_condition = spline_structure.is_initial_slope_positive(X,1501)
 		else:
 			options_slope_condition = True
 
@@ -418,11 +421,12 @@ Angle1Splines = clamped_cubic_spline(0,EndTime,Angle1Initial,Angle1Final,Angular
 										AngularVelocity1Final,Angle1Bounds[0],Angle1Bounds[1],Time,\
 										angle = "Shoulder")
 Angle2Splines = clamped_cubic_spline(0,EndTime,Angle2Initial,Angle2Final,AngularVelocity2Initial, \
-										AngularVelocity2Final,Angle2Bounds[0],Angle2Bounds[1],Time)
+										AngularVelocity2Final,Angle2Bounds[0],Angle2Bounds[1],Time, \
+										angle = "Elbow")
 Angle3Splines = clamped_cubic_spline(0,EndTime,Angle3Initial,Angle3Final,AngularVelocity3Initial, \
 										AngularVelocity3Final,Angle3Bounds[0],Angle3Bounds[1],Time)
 
-pickle.dump([Angle1Splines, Angle2Splines, Angle3Splines], open('SplineClassObjects.pkl','wb'),pickle.HIGHEST_PROTOCOL)
+pickle.dump([Angle1Splines, Angle2Splines, Angle3Splines], open('SplineClassObjects2.pkl','wb'),pickle.HIGHEST_PROTOCOL)
 
 
 
