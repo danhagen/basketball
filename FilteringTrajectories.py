@@ -187,15 +187,8 @@ def position_in_y(Angle1,Angle2,Angle3):
 					- HandLength*cos(Angle1+Angle2-Angle3)
 	return(PositionInY)
 def generate_posture_array(angle1,angle2,angle3):
-	xresult = np.array([	0, \
-							ShoulderToElbowLength*sin(angle1), \
-							ShoulderToElbowLength*sin(angle1) + ForearmLength*sin(angle1+angle2), \
-							ShoulderToElbowLength*sin(angle1) + ForearmLength*sin(angle1+angle2) + HandLength*sin(angle1+angle2-angle3)])
-	yresult = np.array([	0, \
-							-ShoulderToElbowLength*cos(angle1), \
-							-ShoulderToElbowLength*cos(angle1) - ForearmLength*cos(angle1+angle2), \
-							-ShoulderToElbowLength*cos(angle1) - ForearmLength*cos(angle1+angle2) - HandLength*cos(angle1+angle2-angle3) ])
-	
+	xresult = np.cumsum([0, ShoulderToElbowLength*sin(angle1), ForearmLength*sin(angle1+angle2), HandLength*sin(angle1+angle2-angle3)])
+	yresult = np.cumsum([0, -ShoulderToElbowLength*cos(angle1), - ForearmLength*cos(angle1+angle2), - HandLength*cos(angle1+angle2-angle3)])
 	return(xresult,yresult)
 def plot_random_trajectory(xbin,ybin,Angle1Splines,Angle2Splines,Angle3Splines,Time):
 	TrialNumbers = find_trajectories(xbin,ybin)
@@ -218,6 +211,23 @@ def plot_random_trajectory(xbin,ybin,Angle1Splines,Angle2Splines,Angle3Splines,T
 	plt.title('Trial '+ str(RandomTrialNumber))
 	plt.show()
 
+def plot_trajectory_number(TrialNumber,Angle1Splines,Angle2Splines,Angle3Splines,Time):
+	angle1 = Angle1Splines[TrialNumber].pp_func(Time)
+	angle2 = Angle2Splines[TrialNumber].pp_func(Time)
+	angle3 = Angle3Splines[TrialNumber].pp_func(Time)
+	X,Y = position_in_x(angle1,angle2,angle3), position_in_y(angle1,angle2,angle3)
+	xcirc, ycirc = 5*sin(np.arange(0,2*np.pi,0.01)), 5*cos(np.arange(0,2*np.pi,0.01))
+	plt.figure()
+	plt.plot(X,Y, lw = 3)
+	plt.plot(xcirc,ycirc,'k')
+	for i in range(0,len(Time),np.int(len(Time)/10)):
+		x_arm,y_arm = generate_posture_array(angle1[i],angle2[i],angle3[i])
+		plt.plot(x_arm,y_arm, 'k')
+	plt.xticks([])
+	plt.yticks([])	
+	plt.axis('equal')
+	plt.title('Trial '+ str(TrialNumber))
+	plt.show()
 
 
 
