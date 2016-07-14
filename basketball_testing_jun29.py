@@ -1,4 +1,4 @@
-
+import ipdb
 import numpy as np
 import sympy as sp
 import matplotlib.pyplot as plt
@@ -124,7 +124,9 @@ def c_coefficients(RandomMiddleAngle,RandomMiddleTime,AngleConditions):
 					[3*AngleConditions[3] - 3*(AngleConditions[2]-RandomMiddleAngle)/(EndTime-RandomMiddleTime)] ],  \
 					float)
 	CCoefficients = np.dot(inv(C),y)
-	return(np.array(CCoefficients).astype(float))
+	c_coefficients_float = np.array(CCoefficients).astype(float)
+	ipdb.set_trace()
+	return(c_coefficients_float)
 
 def d_coefficients(RandomMiddleTime,CCoefficients):
 	DCoefficients = np.array([	[(CCoefficients[1]-CCoefficients[0])/(3*(RandomMiddleTime-0))],  \
