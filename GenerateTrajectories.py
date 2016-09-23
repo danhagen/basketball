@@ -32,7 +32,7 @@ Angle1Initial = DegreeToRadianFactor*-10
 Angle1Final = DegreeToRadianFactor*120
 
 Angle2Initial = DegreeToRadianFactor*85
-Angle2Final = DegreeToRadianFactor*
+Angle2Final = DegreeToRadianFactor*84
 
 Angle3Initial = DegreeToRadianFactor*0
 Angle3Final = DegreeToRadianFactor*-35
@@ -421,12 +421,12 @@ Angle1Splines = clamped_cubic_spline(0,EndTime,Angle1Initial,Angle1Final,Angular
 										AngularVelocity1Final,Angle1Bounds[0],Angle1Bounds[1],Time,\
 										angle = "Shoulder")
 Angle2Splines = clamped_cubic_spline(0,EndTime,Angle2Initial,Angle2Final,AngularVelocity2Initial, \
-										AngularVelocity2Final,Angle2Bounds[0],Angle2Bounds[1],Time) \
-										#angle = "Elbow")
+										AngularVelocity2Final,Angle2Bounds[0],Angle2Bounds[1],Time, \
+										angle = "Elbow")
 Angle3Splines = clamped_cubic_spline(0,EndTime,Angle3Initial,Angle3Final,AngularVelocity3Initial, \
 										AngularVelocity3Final,Angle3Bounds[0],Angle3Bounds[1],Time)
 
-pickle.dump([Angle1Splines, Angle2Splines, Angle3Splines], open('SplineClassObjects.pkl','wb'),pickle.HIGHEST_PROTOCOL)
+pickle.dump([Angle1Splines, Angle2Splines, Angle3Splines], open('SplineClassObjects3.pkl','wb'),pickle.HIGHEST_PROTOCOL)
 
 
 
