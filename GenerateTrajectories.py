@@ -1,4 +1,3 @@
-
 import ipdb
 import numpy as np
 import sympy as sp
@@ -7,6 +6,7 @@ import matplotlib.pyplot as plt
 from numpy import sin,cos,tan,sqrt
 from numpy.linalg import inv
 import pickle
+import time
 
 
 EndTime = 0.55
@@ -32,7 +32,7 @@ Angle1Initial = DegreeToRadianFactor*-10
 Angle1Final = DegreeToRadianFactor*120
 
 Angle2Initial = DegreeToRadianFactor*85
-Angle2Final = DegreeToRadianFactor*
+Angle2Final = DegreeToRadianFactor*84
 
 Angle3Initial = DegreeToRadianFactor*0
 Angle3Final = DegreeToRadianFactor*-35
@@ -387,8 +387,9 @@ def clamped_cubic_spline(x_initial,x_final,y_initial,y_final,initial_slope,final
 	Returns a list of arrays, each of len(X). Options allows for slope limitations on shoulder rotations such
 	that the derivative of the spline is always positive to match observations (slope = "Shoulder").
 	"""
-	NumberOfTrials =  100000
+	NumberOfTrials =  10000
 	i = 0
+	StartTime = time.time()
 	while i < NumberOfTrials:
 		x_rand,y_rand = generate_random_point(x_initial,x_final,ymin,ymax)
 		A,B,C,D = spline_coefficients(x_initial,x_rand,x_final,y_initial,y_rand,y_final,initial_slope,final_slope)
@@ -398,36 +399,50 @@ def clamped_cubic_spline(x_initial,x_final,y_initial,y_final,initial_slope,final
 		spline_structure = Spline(A,B,C,D,x_initial,x_rand)
 		if options.get("angle") == "Shoulder":
 			options_slope_condition = spline_structure.is_initial_slope_positive(X,2501)
+			dof = "Shoulder: " + " "*(10-len("Shoulder: "))
 		elif options.get("angle") == "Elbow":
 			options_slope_condition = spline_structure.is_initial_slope_positive(X,501)
+			dof = "Elbow: " + " "*(10-len("Elbow: "))
 		else:
 			options_slope_condition = True
-
+			dof = "Wrist: " + " "*(10-len("Wrist: "))
 		if i == 0:
 			if spline_structure.is_within_bounds(x_initial,x_final, ymin, ymax) and options_slope_condition:
 				Splines = spline_structure
-				i+=1
+				i+=1	
+				statusbar = '[' + '\u25a0'*int((i+1)/(NumberOfTrials/50)) + '\u25a1'*(50-int((i+1)/(NumberOfTrials/50))) + '] ' 			
+				print(dof + statusbar + '{0:1.1f}'.format(i/NumberOfTrials*100) + '% complete, ' + '{0:1.1f}'.format(time.time() - StartTime) + 'sec        \r', end='')
 		elif i == 1:
 			if spline_structure.is_within_bounds(x_initial,x_final, ymin, ymax) and options_slope_condition:
 				Splines = np.concatenate(([Splines], [spline_structure]), axis = 0)
 				i+=1
+				statusbar = '[' + '\u25a0'*int((i+1)/(NumberOfTrials/50)) + '\u25a1'*(50-int((i+1)/(NumberOfTrials/50))) + '] '
+				print(dof + statusbar + '{0:1.1f}'.format(i/NumberOfTrials*100) + '% complete, ' + '{0:1.1f}'.format(time.time() - StartTime) + 'sec        \r', end='')
 		else:
 			if spline_structure.is_within_bounds(x_initial,x_final, ymin, ymax) and options_slope_condition:
 				Splines = np.concatenate((Splines, [spline_structure]), axis = 0)
 				i+=1
+				statusbar = '[' + '\u25a0'*int((i+1)/(NumberOfTrials/50)) + '\u25a1'*(50-int((i+1)/(NumberOfTrials/50))) + '] '
+				print(dof + statusbar + '{0:1.1f}'.format(i/NumberOfTrials*100) + '% complete, ' + '{0:1.1f}'.format(time.time() - StartTime) + 'sec        \r', end='')
+	print('\n')
 	return(Splines)
+def run_N_loops(NumberOfLoops):
+	for LoopNumber in range(NumberOfLoops):
+		Angle1Splines = clamped_cubic_spline(0,EndTime,Angle1Initial,Angle1Final,AngularVelocity1Initial, \
+												AngularVelocity1Final,Angle1Bounds[0],Angle1Bounds[1],Time,\
+												angle = "Shoulder")
+		Angle2Splines = clamped_cubic_spline(0,EndTime,Angle2Initial,Angle2Final,AngularVelocity2Initial, \
+												AngularVelocity2Final,Angle2Bounds[0],Angle2Bounds[1],Time, \
+												angle = "Elbow")
+		Angle3Splines = clamped_cubic_spline(0,EndTime,Angle3Initial,Angle3Final,AngularVelocity3Initial, \
+												AngularVelocity3Final,Angle3Bounds[0],Angle3Bounds[1],Time)
+		if LoopNumber <= 8: 
+			print('-'*37 + 'End of Loop ' + str(LoopNumber+1) + '-'*37)
+		else:
+			print('-'*36 + 'End of Loop ' + str(LoopNumber+1) + '-'*37)
+		pickle.dump([Angle1Splines, Angle2Splines, Angle3Splines], open('LoopNumber' + str(LoopNumber+1) + '.pkl','wb'),pickle.HIGHEST_PROTOCOL)
 
-Angle1Splines = clamped_cubic_spline(0,EndTime,Angle1Initial,Angle1Final,AngularVelocity1Initial, \
-										AngularVelocity1Final,Angle1Bounds[0],Angle1Bounds[1],Time,\
-										angle = "Shoulder")
-Angle2Splines = clamped_cubic_spline(0,EndTime,Angle2Initial,Angle2Final,AngularVelocity2Initial, \
-										AngularVelocity2Final,Angle2Bounds[0],Angle2Bounds[1],Time) \
-										#angle = "Elbow")
-Angle3Splines = clamped_cubic_spline(0,EndTime,Angle3Initial,Angle3Final,AngularVelocity3Initial, \
-										AngularVelocity3Final,Angle3Bounds[0],Angle3Bounds[1],Time)
-
-pickle.dump([Angle1Splines, Angle2Splines, Angle3Splines], open('SplineClassObjects.pkl','wb'),pickle.HIGHEST_PROTOCOL)
-
+run_N_loops(10)
 
 
 
