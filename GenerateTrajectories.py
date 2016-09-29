@@ -442,21 +442,8 @@ def run_N_loops(NumberOfLoops):
 			print('-'*36 + 'End of Loop ' + str(LoopNumber+1) + '-'*37)
 		pickle.dump([Angle1Splines, Angle2Splines, Angle3Splines], open('LoopNumber' + str(LoopNumber+1) + '.pkl','wb'),pickle.HIGHEST_PROTOCOL)
 
-<<<<<<< HEAD
-Angle1Splines = clamped_cubic_spline(0,EndTime,Angle1Initial,Angle1Final,AngularVelocity1Initial, \
-										AngularVelocity1Final,Angle1Bounds[0],Angle1Bounds[1],Time,\
-										angle = "Shoulder")
-Angle2Splines = clamped_cubic_spline(0,EndTime,Angle2Initial,Angle2Final,AngularVelocity2Initial, \
-										AngularVelocity2Final,Angle2Bounds[0],Angle2Bounds[1],Time, \
-										angle = "Elbow")
-Angle3Splines = clamped_cubic_spline(0,EndTime,Angle3Initial,Angle3Final,AngularVelocity3Initial, \
-										AngularVelocity3Final,Angle3Bounds[0],Angle3Bounds[1],Time)
-
-pickle.dump([Angle1Splines, Angle2Splines, Angle3Splines], open('SplineClassObjects3.pkl','wb'),pickle.HIGHEST_PROTOCOL)
-
-=======
 run_N_loops(10)
->>>>>>> da472dc684dcc50440090d908ae2b31742b17427
+
 
 
 

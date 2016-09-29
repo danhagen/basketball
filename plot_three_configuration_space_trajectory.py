@@ -145,19 +145,19 @@ def plot_three_configuration_space_trajectory(good,fair,poor):
 	fig1 = plt.figure()
 	ax = fig1.gca(projection='3d')
 
-	GoodAngle1 = (180/np.pi)*pickle.load(open('SplineClassObjects2.pkl','rb'))[0][good].pp_func(Time)
-	GoodAngle2 = (180/np.pi)*pickle.load(open('SplineClassObjects2.pkl','rb'))[1][good].pp_func(Time)
-	GoodAngle3 = (180/np.pi)*pickle.load(open('SplineClassObjects2.pkl','rb'))[2][good].pp_func(Time)
+	GoodAngle1 = (180/np.pi)*pickle.load(open('AllAngleSplines.pkl','rb'))[0][good-1].pp_func(Time)
+	GoodAngle2 = (180/np.pi)*pickle.load(open('AllAngleSplines.pkl','rb'))[1][good-1].pp_func(Time)
+	GoodAngle3 = (180/np.pi)*pickle.load(open('AllAngleSplines.pkl','rb'))[2][good-1].pp_func(Time)
 	plt.plot(GoodAngle1,GoodAngle2,GoodAngle3,color = '#71C177',lw = 2)
 
-	FairAngle1 = (180/np.pi)*pickle.load(open('SplineClassObjects2.pkl','rb'))[0][fair].pp_func(Time)
-	FairAngle2 = (180/np.pi)*pickle.load(open('SplineClassObjects2.pkl','rb'))[1][fair].pp_func(Time)
-	FairAngle3 = (180/np.pi)*pickle.load(open('SplineClassObjects2.pkl','rb'))[2][fair].pp_func(Time)
+	FairAngle1 = (180/np.pi)*pickle.load(open('AllAngleSplines.pkl','rb'))[0][fair-1].pp_func(Time)
+	FairAngle2 = (180/np.pi)*pickle.load(open('AllAngleSplines.pkl','rb'))[1][fair-1].pp_func(Time)
+	FairAngle3 = (180/np.pi)*pickle.load(open('AllAngleSplines.pkl','rb'))[2][fair-1].pp_func(Time)
 	plt.plot(FairAngle1,FairAngle2,FairAngle3,color = '#F37722',lw = 2)
 
-	PoorAngle1 = (180/np.pi)*pickle.load(open('SplineClassObjects2.pkl','rb'))[0][poor].pp_func(Time)
-	PoorAngle2 = (180/np.pi)*pickle.load(open('SplineClassObjects2.pkl','rb'))[1][poor].pp_func(Time)
-	PoorAngle3 = (180/np.pi)*pickle.load(open('SplineClassObjects2.pkl','rb'))[2][poor].pp_func(Time)
+	PoorAngle1 = (180/np.pi)*pickle.load(open('AllAngleSplines.pkl','rb'))[0][poor-1].pp_func(Time)
+	PoorAngle2 = (180/np.pi)*pickle.load(open('AllAngleSplines.pkl','rb'))[1][poor-1].pp_func(Time)
+	PoorAngle3 = (180/np.pi)*pickle.load(open('AllAngleSplines.pkl','rb'))[2][poor-1].pp_func(Time)
 	plt.plot(PoorAngle1,PoorAngle2,PoorAngle3,color = '#5D4EA1',lw = 2)
 
 	plt.plot([GoodAngle1[-1]],[GoodAngle2[-1]],[GoodAngle3[-1]],'ko')

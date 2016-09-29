@@ -2,10 +2,7 @@ import ipdb
 import numpy as np 
 import matplotlib.pyplot as plt
 import pickle
-
-EndTime = 0.55
-ChangeInTime = 0.0001
-Time = np.arange(0,EndTime+ChangeInTime,ChangeInTime,float)
+import time
 
 class Spline:
 	"""
@@ -135,10 +132,6 @@ class Spline:
 			minima = y_min
 		result = np.max(maxima) <= y_max and np.min(minima) >= y_min
 		return(result)
-
-Angle1Splines = pickle.load(open('SplineClassObjects.pkl','rb'))[0]
-Angle2Splines = pickle.load(open('SplineClassObjects.pkl','rb'))[1]
-Angle3Splines = pickle.load(open('SplineClassObjects.pkl','rb'))[2]
 
 def plot_spline_results(Time,AngleSplines):
 	"""
@@ -364,13 +357,42 @@ def plot_normalized_muscle_velocity(Angle1Splines,Angle2Splines,Angle3Splines,Ti
 	for i in range(18):
 		plt.plot(Time,NormalizedMuscleVelocity[i])
 	plt.show()
+def sign_changed_here(X):
+	import numpy as np
+	sign_change_index = []
+	if np.shape(X) == (len(X),): 
+		Xsign = np.sign(X[len(X):])
+		signchange = ((np.roll(Xsign,1)-Xsign) != 0).astype(int)
+		signchange[0] = 0
+		if 1 in list(signchange): 
+			while 1 in list(signchange):
+				sign_change_index.append(list(signchange).index(1))
+				signchange[list(signchange).index(1)]=0
+		else:
+			sign_change_index.append('No Sign Change Found!')
+	else:
+		for i in range(np.shape(X)[0]):
+			Xsign = np.sign(X[i,:])
+			Xsign[0] = Xsign[1]
+			signchange = ((np.roll(Xsign,1)-Xsign) != 0).astype(int)
+			signchange[0] = 0
+			if 1 in list(signchange):
+				temp = []
+				while 1 in list(signchange): 
+					temp.append(list(signchange).index(1))
+					signchange[list(signchange).index(1)] = 0 
+				sign_change_index.append(temp[-1])
+			else:
+				sign_change_index.append(5199)
+	return(sign_change_index)
 def max_contraction(Angle1Splines,Angle2Splines,Angle3Splines,Time):
 	NormalizedMuscleVelocity = normalized_muscle_velocity(Angle1Splines,Angle2Splines,Angle3Splines,Time)
 	Zeros = [[0]*len(NormalizedMuscleVelocity[0])]*len(NormalizedMuscleVelocity)
+	zero_velocity_index = sign_changed_here(NormalizedMuscleVelocity)
 	EccentricContractions = (NormalizedMuscleVelocity>Zeros)*NormalizedMuscleVelocity
 	ConcentricContractions = (NormalizedMuscleVelocity<Zeros)*NormalizedMuscleVelocity
-	MaxEccContract = np.max(EccentricContractions[:,:5200],1)
-	MaxConcContract = np.min(ConcentricContractions[:,:5200],1)
+	MaxEccContract = np.array([np.max(EccentricContractions[i,:zero_velocity_index[i]]) for i in range(18)])
+	MaxConcContract = np.array([np.min(ConcentricContractions[i,:zero_velocity_index[i]]) for i in range(18)])
 	return(MaxEccContract,MaxConcContract)
 def sum_of_squares(Array):
 	result = np.sum(Array**2)
@@ -378,21 +400,40 @@ def sum_of_squares(Array):
 def total_sum_of_squares(Angle1Splines,Angle2Splines,Angle3Splines,Time):
 	Ecc_Sum_of_Squares = []
 	Conc_Sum_of_Squares = []
+	StartTime = time.time()
 	for i in range(Angle1Splines.size):
 		MaxEccContract,MaxConcContract = max_contraction(Angle1Splines[i],Angle2Splines[i],Angle3Splines[i],Time)
 		Ecc_Sum_of_Squares.append(sum_of_squares(MaxEccContract))
 		Conc_Sum_of_Squares.append(sum_of_squares(MaxConcContract))
+		statusbar = '[' + '\u25a0'*int((i+1)/(Angle1Splines.size/50)) + '\u25a1'*(50-int((i+1)/(Angle1Splines.size/50))) + '] '
+		print(statusbar + '{0:1.1f}'.format(i/Angle1Splines.size*100) + '% complete, ' + '{0:1.1f}'.format(time.time() - StartTime) + 'sec        \r', end='')
+	print('\n')
 	return(Ecc_Sum_of_Squares,Conc_Sum_of_Squares)
-Ecc_Sum_of_Squares,Conc_Sum_of_Squares = total_sum_of_squares(Angle1Splines,Angle2Splines,Angle3Splines,Time)
-plt.figure()
-plt.hist2d(Ecc_Sum_of_Squares, Conc_Sum_of_Squares, bins=25)
-plt.colorbar()
-plt.show()
 
-SumOfSquares = np.array([Ecc_Sum_of_Squares,Conc_Sum_of_Squares])
-pickle.dump(SumOfSquares,open('SumOfSquares.pkl','wb'),pickle.HIGHEST_PROTOCOL)
-#plot_spline_results(Time,Angle1Spline)
-#plot_spline_results(Time,Angle2Spline)
-#plot_spline_results(Time,Angle3Spline)
+EndTime = 0.55
+ChangeInTime = 0.0001
+Time = np.arange(0,EndTime+ChangeInTime,ChangeInTime,float)
+EccSumOfSquares, ConcSumOfSquares = [],[]
+AllAngle1Splines, AllAngle2Splines, AllAngle3Splines = [],[],[]
+for LoopNumber in range(10):
+	AngleSplines = pickle.load(open('LoopNumber'+str(LoopNumber+1)+'.pkl','rb'))
+	Angle1Splines = AngleSplines[0]
+	Angle2Splines = AngleSplines[1]
+	Angle3Splines = AngleSplines[2]
+	IntermediateEccSOS,IntermediateConcSOS = total_sum_of_squares(Angle1Splines,Angle2Splines,Angle3Splines,Time)
+	EccSumOfSquares = np.concatenate((EccSumOfSquares,IntermediateEccSOS),axis=0)
+	ConcSumOfSquares = np.concatenate((ConcSumOfSquares,IntermediateConcSOS),axis=0)
+	#AllAngle1Splines = np.concatenate((AllAngle1Splines,Angle1Splines),axis=0)
+	#AllAngle2Splines = np.concatenate((AllAngle2Splines,Angle2Splines),axis=0)
+	#AllAngle3Splines = np.concatenate((AllAngle3Splines,Angle3Splines),axis=0)
+	Loop = 'Loop Number ' + str(int(LoopNumber)) + ': '
+	statusbar = Loop + '[' + '\u25a0'*(LoopNumber+1) + '\u25a1'*(10-(LoopNumber+1)) + '] '
+	print(statusbar + '{0:1.1f}'.format(LoopNumber/10*100) + '% complete,         \r', end='')
+
+pickle.dump([EccSumOfSquares,ConcSumOfSquares],open('ALLSumOfSquares2.pkl','wb'),pickle.HIGHEST_PROTOCOL)
+#pickle.dump([AllAngle1Splines,AllAngle2Splines,AllAngle3Splines],open('ALLAngleSplines.pkl','wb'),pickle.HIGHEST_PROTOCOL)
+#plot_spline_results(Time,Angle1Splines)
+#plot_spline_results(Time,Angle2Splines)
+#plot_spline_results(Time,Angle3Splines)
 
 

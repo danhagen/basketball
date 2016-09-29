@@ -150,15 +150,18 @@ def plot_trajectory_number(trialnumber, **kwargs):
 	import matplotlib as mpl 
 
 	mpl.rcParams['pdf.fonttype'] = 42
+	mpl.rcParams['xtick.direction'] = 'out'
+	mpl.rcParams['ytick.direction'] = 'out'
 
 	PlotAngles = kwargs.get('PlotAngles',False)
 	PlotVm = kwargs.get('PlotVm',False)
 	assert type(PlotAngles) == bool, "PlotAngles must be a boolean"
 	assert type(PlotVm) == bool, "PlotVm must be a boolean"
 
+	trialnumber -= 1
 	dt = 0.0001
 	Time = np.arange(0,0.55,dt)
-	Splines = pickle.load(open('SplineClassObjects2.pkl','rb'))
+	Splines = pickle.load(open('AllAngleSplines.pkl','rb'))
 	Angle1Spline = Splines[0][trialnumber]
 	Angle2Spline = Splines[1][trialnumber]
 	Angle3Spline = Splines[2][trialnumber]
@@ -200,7 +203,7 @@ def plot_trajectory_number(trialnumber, **kwargs):
 	    right = 'off',		# ticks along the right edge are off
 	    left = 'off',		# ticks along the left edge are off
 	    labelbottom='off') # labels along the bottom edge are off
-	ax.set_title('Trial Number: ' + str(trialnumber))
+	ax.set_title('Trial Number: ' + str(trialnumber+1))
 	ax.set_aspect('equal', 'datalim')
 
 	if PlotAngles == True:
@@ -215,7 +218,7 @@ def plot_trajectory_number(trialnumber, **kwargs):
 		ax1.spines['top'].set_color('none')
 		ax1.xaxis.set_ticks_position('bottom')
 		ax1.yaxis.set_ticks_position('left')
-		ax1.set_title('Trial Number: ' + str(trialnumber))
+		ax1.set_title('Trial Number: ' + str(trialnumber+1))
 		plt.ylabel('Shoulder Angle')
 
 		plt.figure()
@@ -229,7 +232,7 @@ def plot_trajectory_number(trialnumber, **kwargs):
 		ax2.spines['top'].set_color('none')
 		ax2.xaxis.set_ticks_position('bottom')
 		ax2.yaxis.set_ticks_position('left')
-		ax2.set_title('Trial Number: ' + str(trialnumber))
+		ax2.set_title('Trial Number: ' + str(trialnumber+1))
 		plt.ylabel('Elbow Angle')
 
 		plt.figure()
@@ -243,7 +246,7 @@ def plot_trajectory_number(trialnumber, **kwargs):
 		ax3.spines['top'].set_color('none')
 		ax3.xaxis.set_ticks_position('bottom')
 		ax3.yaxis.set_ticks_position('left')
-		ax3.set_title('Trial Number: ' + str(trialnumber))
+		ax3.set_title('Trial Number: ' + str(trialnumber+1))
 		plt.ylabel('Wrist Angle')
 
 	def normalized_muscle_velocity(Angle1Spline,Angle2Spline,Angle3Spline,Time):
@@ -457,8 +460,11 @@ def plot_trajectory_number(trialnumber, **kwargs):
 		return(NormalizedMuscleVelocity)
 	def plot_normalized_muscle_velocity(Angle1Splines,Angle2Splines,Angle3Splines,Time):
 		NormalizedMuscleVelocity = normalized_muscle_velocity(Angle1Splines,Angle2Splines,Angle3Splines,Time)
+		
 		plt.figure()
-		plt.plot(Time,NormalizedMuscleVelocity.T,color = 'b')
+		plt.plot(Time,NormalizedMuscleVelocity[5:,:].T,color = '#71C177', lw = 2)
+		plt.plot(Time,NormalizedMuscleVelocity[3:5,:].T,color = '#F37722', lw = 2)
+		plt.plot(Time,NormalizedMuscleVelocity[:3,:].T,color = '#5D4EA1', lw = 2)
 		ax4 = plt.gca()
 		ax4.spines['left'].set_position('zero')
 		ax4.spines['right'].set_color('none')
@@ -469,7 +475,9 @@ def plot_trajectory_number(trialnumber, **kwargs):
 		plt.ylabel('$\hat{v}_{m}}$')
 
 		plt.figure()
-		plt.plot(Time,NormalizedMuscleVelocity.T,color = 'b')
+		plt.plot(Time,NormalizedMuscleVelocity[5:,:].T,color = '#71C177', lw = 2)
+		plt.plot(Time,NormalizedMuscleVelocity[3:5,:].T,color = '#F37722', lw = 2)
+		plt.plot(Time,NormalizedMuscleVelocity[:3,:].T,color = '#5D4EA1', lw = 2)
 		ax4 = plt.gca()
 		ax4.spines['left'].set_position('zero')
 		ax4.spines['right'].set_color('none')
@@ -484,4 +492,5 @@ def plot_trajectory_number(trialnumber, **kwargs):
 	if PlotVm == True: plot_normalized_muscle_velocity(Angle1Spline,Angle2Spline,Angle3Spline,Time) 
 	
 	plt.show()
+	return(trialnumber + 1)
 			
