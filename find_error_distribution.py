@@ -133,25 +133,27 @@ class Spline:
 			minima = y_min
 		result = np.max(maxima) <= y_max and np.min(minima) >= y_min
 		return(result)
-def run_analysis_for_trial(shotnumber,xbin,ybin,N,**kwargs):
-	"""
-	This program runs find_similar_shots and plot_many_trajectories sequentially 
-	to find up to 15 similar trajectories and plot them.
+def find_error_distribution(reference_trial_number):
+	import numpy as np
+	import pickle
+	import matplotlib.pyplot as plt
+	import time
+	import matplotlib as mpl 
 
-	~~~~~~~~~~~~~~~~~~
-	**kwargs
-	~~~~~~~~~~~~~~~~~~
+	mpl.rcParams['pdf.fonttype'] = 42
+	mpl.rcParams['xtick.direction'] = 'out'
+	mpl.rcParams['ytick.direction'] = 'out'
 
-	returnErr returns a list of ordered pairs for the (up to) N 
-	similar trajectories. Default is False.
-
-	"""
-
-	import matplotlib.pyplot as plt 
-	import numpy
-
-	returnErr = kwargs.get("returnErr",False)
-	assert type(returnErr)==bool, "returnErr must be a boolean"
+	def XY(A1,A2,A3,Time):
+		HeightInInches = 71
+		Height = HeightInInches*2.54
+		ShoulderToElbowLength = 0.186*Height
+		ForearmLength = 0.146*Height
+		HandLength = 0.108*Height
+		a1,a2,a3 = A1.pp_func(Time),A2.pp_func(Time),A3.pp_func(Time)
+		X = [ShoulderToElbowLength*np.sin(a1[i])+ForearmLength*np.sin(a1[i]+a2[i])+HandLength*np.sin(a1[i]+a2[i]-a3[i]) for i in range(len(Time))]
+		Y = [-ShoulderToElbowLength*np.cos(a1[i])-ForearmLength*np.cos(a1[i]+a2[i])-HandLength*np.cos(a1[i]+a2[i]-a3[i]) for i in range(len(Time))]
+		return(np.array(X),np.array(Y))
 
 	def statusbar(i,N,**kwargs):
 		"""
@@ -192,161 +194,30 @@ def run_analysis_for_trial(shotnumber,xbin,ybin,N,**kwargs):
 		else:
 			print(statusbar + '{0:1.1f}'.format((i+1)/N*100) + '% complete           \r',end = '')
 
-	def find_similar_shots(xbin,ybin,shotnumber):
-		import numpy as np 
-		import pickle
-		import random
-		import matplotlib.pyplot as plt 
-		import time
+	def error(gx,gy,x,y):
+		error_value = np.sum(((gx-x)**2+(gy-y)**2)**0.5)
+		return(error_value)
 
-		shotnumber -= 1
-		dt = 0.0001
-		Time = np.arange(0,0.55,dt)
-		Splines = pickle.load(open('AllAngleSplines.pkl','rb'))
-		Angle1Spline = Splines[0][shotnumber]
-		Angle2Spline = Splines[1][shotnumber]
-		Angle3Spline = Splines[2][shotnumber]
-		def XY(A1,A2,A3,Time):
-			HeightInInches = 71
-			Height = HeightInInches*2.54
-			ShoulderToElbowLength = 0.186*Height
-			ForearmLength = 0.146*Height
-			HandLength = 0.108*Height
-			a1,a2,a3 = A1.pp_func(Time),A2.pp_func(Time),A3.pp_func(Time)
-			X = [ShoulderToElbowLength*np.sin(a1[i])+ForearmLength*np.sin(a1[i]+a2[i])+HandLength*np.sin(a1[i]+a2[i]-a3[i]) for i in range(len(Time))]
-			Y = [-ShoulderToElbowLength*np.cos(a1[i])-ForearmLength*np.cos(a1[i]+a2[i])-HandLength*np.cos(a1[i]+a2[i]-a3[i]) for i in range(len(Time))]
-			return(np.array(X),np.array(Y))
+	reference_trial_number-=1
+	dt = 0.0001
+	Time = np.arange(0,0.55,dt)
+	Splines = pickle.load(open('AllAngleSplines.pkl','rb'))
+	Angle1Spline = Splines[0][reference_trial_number]
+	Angle2Spline = Splines[1][reference_trial_number]
+	Angle3Spline = Splines[2][reference_trial_number]
 
-		gx,gy = XY(Angle1Spline,Angle2Spline,Angle3Spline,Time)
+	gx,gy = XY(Angle1Spline,Angle2Spline,Angle3Spline,Time)
 
-		xmax = 125
-		ymax = 125
-		numberofbins = 25
-		xbinwidth = xmax/numberofbins
-		ybinwidth = ymax/numberofbins
-		[eccSOS2, conSOS2] = pickle.load(open('ALLSumOfSquares2.pkl','rb'))
-		_,xedges,yedges = np.histogram2d(eccSOS2,conSOS2,bins = [np.arange(0,xmax,xbinwidth),np.arange(0,ymax,ybinwidth)])
+	Error = []
+	StartTime = time.time()
+	for i in range(len(Splines[0])):
+		A1,A2,A3 = Splines[0][i],Splines[1][i],Splines[2][i]
+		x,y = XY(A1,A2,A3,Time)
+		Error.append(error(gx,gy,x,y))
+		statusbar(i,len(Splines[0]),StartTime=StartTime,Title = "find_error_distribution")
 
-		xbin_center = (xbin-1/2)*xbinwidth
-		ybin_center = (ybin-1/2)*ybinwidth
-		possible_index_values = []
-		for i in range(len(eccSOS2)):
-			if np.abs(eccSOS2[i]-xbin_center)<=xbinwidth/2 \
-				and np.abs(conSOS2[i]-ybin_center)<=ybinwidth/2:
-					possible_index_values.append(i)
-		def error(gx,gy,x,y):
-			error_value = np.sum(((gx-x)**2+(gy-y)**2)**0.5)
-			return(error_value)
+	plt.figure()
+	plt.hist(Error,bins=25)
+	plt.show()
 
-		if len(possible_index_values) != 0:
-			Error = []
-			StartTime = time.time()
-			for i in range(len(possible_index_values)):
-				A1,A2,A3 = Splines[0][possible_index_values[i]],Splines[1][possible_index_values[i]],Splines[2][possible_index_values[i]]
-				x,y = XY(A1,A2,A3,Time)
-				Error.append(error(gx,gy,x,y))
-				statusbar(i,len(possible_index_values),StartTime=StartTime,Title = "find_similar_shots")
-			index = [x for (y,x) in sorted(zip(Error, possible_index_values))]
-			error = [Error[possible_index_values.index(x)] for x in index]
-		else:
-			index = 'None'		
-		return(index,error)
-
-	def plot_many_trajectories(reference_trial_number, additional_trials_index):
-		"""
-		additional_trials_index must be a list
-
-		"""
-
-		import numpy as np 
-		import matplotlib.pyplot as plt 
-		import pickle
-		import matplotlib as mpl 
-		import time
-		import random
-
-		mpl.rcParams['pdf.fonttype'] = 42
-		mpl.rcParams['xtick.direction'] = 'out'
-		mpl.rcParams['ytick.direction'] = 'out'
-
-		if type(additional_trials_index) == int: additional_trials_index = [additional_trials_index]
-		assert type(additional_trials_index) == list, "additional_trials_index must be a list"
-
-		reference_trial_index = reference_trial_number - 1
-		dt = 0.0001
-		Time = np.arange(0,0.55,dt)
-		Splines = pickle.load(open('AllAngleSplines.pkl','rb'))
-		Angle1Spline = Splines[0][reference_trial_index]
-		Angle2Spline = Splines[1][reference_trial_index]
-		Angle3Spline = Splines[2][reference_trial_index]
-
-		def XY(A1,A2,A3,Time):
-			HeightInInches = 71
-			Height = HeightInInches*2.54
-			ShoulderToElbowLength = 0.186*Height
-			ForearmLength = 0.146*Height
-			HandLength = 0.108*Height
-			a1,a2,a3 = A1.pp_func(Time),A2.pp_func(Time),A3.pp_func(Time)
-			X = [ShoulderToElbowLength*np.sin(a1[i])+ForearmLength*np.sin(a1[i]+a2[i])+HandLength*np.sin(a1[i]+a2[i]-a3[i]) for i in range(len(Time))]
-			Y = [-ShoulderToElbowLength*np.cos(a1[i])-ForearmLength*np.cos(a1[i]+a2[i])-HandLength*np.cos(a1[i]+a2[i]-a3[i]) for i in range(len(Time))]
-			return(np.array(X),np.array(Y))
-
-		Xref,Yref = XY(Angle1Spline,Angle2Spline,Angle3Spline,Time)
-		N = len(additional_trials_index)
-		if N<=5:
-			row,col = 1,N
-		else:
-			col = 5
-			if N%5 == 0:
-				row = int(N/5)
-			else:
-				row = int((N-N%5)/5 + 1)
-		plt.figure()
-		ax = plt.gca()
-		plt.suptitle('Trial Number ' + str(reference_trial_number))
-		def remove_axes(ax):
-			ax.spines['left'].set_color('none')
-			ax.spines['right'].set_color('none')
-			ax.spines['bottom'].set_color('none')
-			ax.spines['top'].set_color('none')
-			plt.yticks([])
-			plt.tick_params(
-			    axis='both',          # changes apply to both axes
-			    which='both',      # both major and minor ticks are affected
-			    bottom='off',      # ticks along the bottom edge are off
-			    top='off',         # ticks along the top edge are off
-			    right = 'off',		# ticks along the right edge are off
-			    left = 'off',		# ticks along the left edge are off
-			    labelbottom='off') # labels along the bottom edge are off
-			ax.set_aspect('equal', 'datalim')
-		StartTime = time.time()
-		for i in range(N):
-			plt.subplot(row,col,i+1)
-			plt.plot(Xref,Yref,color = '#71C177',lw = 2)
-			A1,A2,A3 = Splines[0][additional_trials_index[i]],Splines[1][additional_trials_index[i]],Splines[2][additional_trials_index[i]]
-			X,Y = XY(A1,A2,A3,Time)
-			plt.plot(X,Y,color = '#5D4EA1')
-			ax = plt.gca()
-			ax.set_title('Trial Number ' + str(additional_trials_index[i]+1))
-			remove_axes(ax)
-			statusbar(i,N,StartTime = StartTime,Title = "plot_many_trajectories")
-		print('\n')
-
-	index,err = find_similar_shots(xbin,ybin,shotnumber)
-	if index == "None": 
-		print("No shots in these bins")
-	else:
-		if len(index) < N: N = len(index)
-		print('\n')
-		plot_many_trajectories(shotnumber,index[:N])
-		plt.figure()
-		plt.hist(err)
-		plt.show()
-
-	if returnErr == True:
-		if index == "None":
-			return("Empty (err,index) list")
-		else:
-			if len(index) < N: N = len(index)	
-			return(list(zip(err[:N],index[:N])))
-	
+	return(Error)

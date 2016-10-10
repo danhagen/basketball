@@ -1,4 +1,3 @@
-import ipdb
 import numpy as np 
 import matplotlib.pyplot as plt
 import pickle
@@ -132,16 +131,6 @@ class Spline:
 			minima = y_min
 		result = np.max(maxima) <= y_max and np.min(minima) >= y_min
 		return(result)
-
-def plot_spline_results(Time,AngleSplines):
-	"""
-	For a 1D vector Time and an N-D list of arrays AngleSplines, this will plot all calculated splines on the
-	same figure. Must close final figure in order to run next line of code.
-	"""
-	plt.figure()
-	for i in range(0,AngleSplines.shape[0]):
-		plt.plot(Time,AngleSplines[i].pp_func(Time))
-	plt.show()
 def normalized_muscle_velocity(Angle1Spline,Angle2Spline,Angle3Spline,Time):
 	#R_tranpose Column 1
 	r1DELTa = 19
@@ -221,8 +210,8 @@ def normalized_muscle_velocity(Angle1Spline,Angle2Spline,Angle3Spline,Time):
 	r3APL = lambda Angle3: 1171/2000 - (171*(Angle3**2))/2000 - (73*Angle3)/2500
 
 	OptimalMuscleLength = np.array([(9.8),     (9.3),      (13.7),      (11.6),      (13.4),    (8.6),   \
-                      				(17.3),    (4.9),       (6.3),       (5.9),       (8.1),    (5.1),   \
-                       				(8.4),     (6.4),       (6.2),       (6.8),        (7.),    (7.1)] )
+	                  				(17.3),    (4.9),       (6.3),       (5.9),       (8.1),    (5.1),   \
+	                   				(8.4),     (6.4),       (6.2),       (6.8),        (7.),    (7.1)] )
 	def muscle_1_velocity(Angle1Spline,Angle2Spline,Angle3Spline,Time):
 		velocity = (-Angle1Spline.pp_deriv(Time)*r1DELTa  									\
 					- Angle2Spline.pp_deriv(Time)*r2DELTa  								\
@@ -351,12 +340,6 @@ def normalized_muscle_velocity(Angle1Spline,Angle2Spline,Angle3Spline,Time):
 											muscle_18_velocity(Angle1Spline,Angle2Spline,Angle3Spline,Time) 	],	\
 			                                float)
 	return(NormalizedMuscleVelocity)
-def plot_normalized_muscle_velocity(Angle1Splines,Angle2Splines,Angle3Splines,Time):
-	NormalizedMuscleVelocity = normalized_muscle_velocity(Angle1Splines,Angle2Splines,Angle3Splines,Time)
-	plt.figure()
-	for i in range(18):
-		plt.plot(Time,NormalizedMuscleVelocity[i])
-	plt.show()
 def sign_changed_here(X):
 	import numpy as np
 	sign_change_index = []
@@ -365,12 +348,13 @@ def sign_changed_here(X):
 		signchange = ((np.roll(Xsign,1)-Xsign) != 0).astype(int)
 		signchange[0] = 0
 		if 1 in list(signchange): 
+			temp = []
 			while 1 in list(signchange):
-				sign_change_index.append(list(signchange).index(1))
+				temp.append(list(signchange).index(1))
 				signchange[list(signchange).index(1)]=0
+			sign_change_index.append(temp[-1])
 		else:
 			sign_change_index.append(5199)
-		### Not sure I have fixed this for single arrays
 	else:
 		for i in range(np.shape(X)[0]):
 			Xsign = np.sign(X[i,:])
@@ -386,55 +370,75 @@ def sign_changed_here(X):
 			else:
 				sign_change_index.append(5199)
 	return(sign_change_index)
-def max_contraction(Angle1Splines,Angle2Splines,Angle3Splines,Time):
+
+def concentric_muscle_power(Angle1Splines,Angle2Splines,Angle3Splines,Time):
+	dt = Time[1]-Time[0]
 	NormalizedMuscleVelocity = normalized_muscle_velocity(Angle1Splines,Angle2Splines,Angle3Splines,Time)
 	Zeros = [[0]*len(NormalizedMuscleVelocity[0])]*len(NormalizedMuscleVelocity)
 	zero_velocity_index = sign_changed_here(NormalizedMuscleVelocity)
-	EccentricContractions = (NormalizedMuscleVelocity>Zeros)*NormalizedMuscleVelocity
 	ConcentricContractions = (NormalizedMuscleVelocity<Zeros)*NormalizedMuscleVelocity
-	MaxEccContract = np.array([np.max(EccentricContractions[i,:zero_velocity_index[i]]) for i in range(18)])
-	MaxConcContract = np.array([np.min(ConcentricContractions[i,:zero_velocity_index[i]]) for i in range(18)])
-	return(MaxEccContract,MaxConcContract)
-def sum_of_squares(Array):
-	result = np.sum(Array**2)
-	return(result)
-def total_sum_of_squares(Angle1Splines,Angle2Splines,Angle3Splines,Time):
-	Ecc_Sum_of_Squares = []
-	Conc_Sum_of_Squares = []
-	StartTime = time.time()
-	for i in range(Angle1Splines.size):
-		MaxEccContract,MaxConcContract = max_contraction(Angle1Splines[i],Angle2Splines[i],Angle3Splines[i],Time)
-		Ecc_Sum_of_Squares.append(sum_of_squares(MaxEccContract))
-		Conc_Sum_of_Squares.append(sum_of_squares(MaxConcContract))
-		statusbar = '[' + '\u25a0'*int((i+1)/(Angle1Splines.size/50)) + '\u25a1'*(50-int((i+1)/(Angle1Splines.size/50))) + '] '
-		print(statusbar + '{0:1.1f}'.format(i/Angle1Splines.size*100) + '% complete, ' + '{0:1.1f}'.format(time.time() - StartTime) + 'sec        \r', end='')
-	print('\n')
-	return(Ecc_Sum_of_Squares,Conc_Sum_of_Squares)
+	OptimalMuscleLength = np.array([[(9.8),     (9.3),      (13.7),      (11.6),      (13.4),    (8.6),   \
+                  					(17.3),    (4.9),       (6.3),       (5.9),       (8.1),    (5.1),   \
+                   					(8.4),     (6.4),       (6.2),       (6.8),        (7.),    (7.1)]] )
+	ConcentricMuscleAcceleration = np.concatenate((np.array([[0]*18]).T,np.diff(ConcentricContractions*OptimalMuscleLength.T)/dt),axis=1)
+	ConcentricMusclePower = ConcentricMuscleAcceleration*(ConcentricContractions*OptimalMuscleLength.T)
+	Power = 0
+	for i in range(18): Power += max(ConcentricMusclePower[i,:zero_velocity_index[i]])
+	return(Power)
+def statusbar(i,N,**kwargs):
+	"""
+	i is the current iteration (must be an int) and N is the length of 
+	the range (must be an int). i must also be in [0,N). 
+	
+	~~~~~~~~~~~~~~
+	**kwargs
+	~~~~~~~~~~~~~~
+	
+	StartTime should equal time.time() and should be defined before your
+	loop to ensure that you get an accurate representation of elapsed time.
+
+	Title should be a str that will be displayed before the statusbar. Title
+	should be no longer than 25 characters.
+
+	~~~~~~~~~~~~~~
+
+	NOTE: you should place a print('\n') after the loop to ensure you
+	begin printing on the next line.
+
+	"""
+	import time
+	StartTime = kwargs.get("StartTime",False)
+	Title = kwargs.get("Title",'')
+
+	assert type(i)==int, "i must be an int"
+	assert type(N)==int, "N must be an int"
+	assert N>i, "N must be greater than i"
+	assert N>0, "N must be a positive integer"
+	assert i>=0, "i must not be negative (can be zero)"
+	assert type(Title) == str, "Title should be a string"
+	assert len(Title) <= 25, "Title should be less than 25 characters"
+	if Title != '': Title = ' '*(25-len(Title)) + Title + ': '
+	statusbar = Title +'[' + '\u25a0'*int((i+1)/(N/50)) + '\u25a1'*(50-int((i+1)/(N/50))) + '] '
+	if StartTime != False:
+		print(statusbar + '{0:1.1f}'.format((i+1)/N*100) + '% complete, ' + '{0:1.1f}'.format(time.time() - StartTime) + 'sec        \r', end='')
+	else:
+		print(statusbar + '{0:1.1f}'.format((i+1)/N*100) + '% complete           \r',end = '')
 
 EndTime = 0.55
 ChangeInTime = 0.0001
 Time = np.arange(0,EndTime+ChangeInTime,ChangeInTime,float)
-EccSumOfSquares, ConcSumOfSquares = [],[]
-AllAngle1Splines, AllAngle2Splines, AllAngle3Splines = [],[],[]
-for LoopNumber in range(10):
-	AngleSplines = pickle.load(open('LoopNumber'+str(LoopNumber+1)+'.pkl','rb'))
-	Angle1Splines = AngleSplines[0]
-	Angle2Splines = AngleSplines[1]
-	Angle3Splines = AngleSplines[2]
-	IntermediateEccSOS,IntermediateConcSOS = total_sum_of_squares(Angle1Splines,Angle2Splines,Angle3Splines,Time)
-	EccSumOfSquares = np.concatenate((EccSumOfSquares,IntermediateEccSOS),axis=0)
-	ConcSumOfSquares = np.concatenate((ConcSumOfSquares,IntermediateConcSOS),axis=0)
-	#AllAngle1Splines = np.concatenate((AllAngle1Splines,Angle1Splines),axis=0)
-	#AllAngle2Splines = np.concatenate((AllAngle2Splines,Angle2Splines),axis=0)
-	#AllAngle3Splines = np.concatenate((AllAngle3Splines,Angle3Splines),axis=0)
-	Loop = 'Loop Number ' + str(int(LoopNumber)) + ': '
-	statusbar = Loop + '[' + '\u25a0'*(LoopNumber+1) + '\u25a1'*(10-(LoopNumber+1)) + '] '
-	print(statusbar + '{0:1.1f}'.format(LoopNumber/10*100) + '% complete,         \r', end='')
+AngleSplines = pickle.load(open('AllAngleSplines.pkl','rb'))
+Angle1Splines = AngleSplines[0]
+Angle2Splines = AngleSplines[1]
+Angle3Splines = AngleSplines[2]
+StartTime = time.time()
+EccentricAccelerations = []
+for i in range(len(Angle1Splines)):
+	EccentricAccelerations.append(eccentric_muscle_acceleration(Angle1Splines[i],Angle2Splines[i],Angle3Splines[i],Time))
+	statusbar(i,len(Angle1Splines),StartTime=StartTime,Title = "Ecc. Accel.")
 
-pickle.dump([EccSumOfSquares,ConcSumOfSquares],open('ALLSumOfSquares2.pkl','wb'),pickle.HIGHEST_PROTOCOL)
-#pickle.dump([AllAngle1Splines,AllAngle2Splines,AllAngle3Splines],open('ALLAngleSplines.pkl','wb'),pickle.HIGHEST_PROTOCOL)
-#plot_spline_results(Time,Angle1Splines)
-#plot_spline_results(Time,Angle2Splines)
-#plot_spline_results(Time,Angle3Splines)
-
-
+plt.figure()
+plt.hist(EccentricAccelerations,bins = 25)
+plt.xlabel("Eccentric Accelerations")
+plt.ylabel("Frequency")
+plt.show()
