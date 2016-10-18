@@ -1,4 +1,4 @@
-def plot_2d_hist(**kwargs):
+def plot_2d_hist(EucNormHist = False,**kwargs):
 	import numpy as np 
 	import pickle
 	import matplotlib.pyplot as plt 
@@ -11,15 +11,18 @@ def plot_2d_hist(**kwargs):
 	PlotHistograms = kwargs.get('PlotHistograms',False)
 	assert type(PlotHistograms) == bool, "PlotHistograms must be a boolean"
 
-	[EccSumOfSquares, ConcSumOfSquares] = pickle.load(open('ALLSumOfSquares2.pkl','rb'))
-
-	
-
-	plt.figure()
-
 	NumberOfBins = 25
 	EccMax = 125
 	ConcMax = 125
+	[EccSumOfSquares, ConcSumOfSquares] = pickle.load(open('ALLSumOfSquares2.pkl','rb'))
+	if EucNormHist == True: 
+		EccSumOfSquares,ConcSumOfSquares = EccSumOfSquares**0.5, ConcSumOfSquares**0.5
+		EccMax = EccMax**0.5
+		ConcMax = ConcMax**0.5
+
+	plt.figure()
+
+	
 	if PlotHistograms == True: plt.subplot(2,2,3)
 	plt.hist2d(EccSumOfSquares,ConcSumOfSquares,bins = [np.arange(0,EccMax,EccMax/NumberOfBins),np.arange(0,ConcMax,ConcMax/NumberOfBins)],\
 					norm=matplotlib.colors.LogNorm())
