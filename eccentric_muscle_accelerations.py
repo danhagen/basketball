@@ -2,6 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pickle
 import time
+import ipdb
+import random
 
 class Spline:
 	"""
@@ -348,13 +350,12 @@ def sign_changed_here(X):
 		signchange = ((np.roll(Xsign,1)-Xsign) != 0).astype(int)
 		signchange[0] = 0
 		if 1 in list(signchange): 
-			temp = []
 			while 1 in list(signchange):
-				temp.append(list(signchange).index(1))
+				sign_change_index.append(list(signchange).index(1))
 				signchange[list(signchange).index(1)]=0
-			sign_change_index.append(temp[-1])
 		else:
 			sign_change_index.append(5199)
+		### Not sure I have fixed this for single arrays
 	else:
 		for i in range(np.shape(X)[0]):
 			Xsign = np.sign(X[i,:])
@@ -370,15 +371,14 @@ def sign_changed_here(X):
 			else:
 				sign_change_index.append(5199)
 	return(sign_change_index)
-
 def eccentric_muscle_acceleration(Angle1Splines,Angle2Splines,Angle3Splines,Time):
 	dt = Time[1]-Time[0]
 	NormalizedMuscleVelocity = normalized_muscle_velocity(Angle1Splines,Angle2Splines,Angle3Splines,Time)
 	Zeros = [[0]*len(NormalizedMuscleVelocity[0])]*len(NormalizedMuscleVelocity)
 	zero_velocity_index = sign_changed_here(NormalizedMuscleVelocity)
 	EccentricContractions = (NormalizedMuscleVelocity>Zeros)*NormalizedMuscleVelocity
-	EccAcc = 0
-	for i in range(18): EccAcc += np.trapz(EccentricContractions[i,:zero_velocity_index[i]],dx = dt)
+	EccAcc = np.array([[0]*5501]*18)
+	for i in range(18): EccAcc[i,:] = np.gradient(NormalizedMuscleVelocity[i,:])/dt
 	return(EccAcc)
 def statusbar(i,N,**kwargs):
 	"""
@@ -428,12 +428,15 @@ Angle2Splines = AngleSplines[1]
 Angle3Splines = AngleSplines[2]
 StartTime = time.time()
 EccentricAccelerations = []
-for i in range(len(Angle1Splines)):
+for i in [random.randint(0,100000)]: #range(len(Angle1Splines)):
 	EccentricAccelerations.append(eccentric_muscle_acceleration(Angle1Splines[i],Angle2Splines[i],Angle3Splines[i],Time))
 	statusbar(i,len(Angle1Splines),StartTime=StartTime,Title = "Ecc. Accel.")
 
 plt.figure()
-plt.hist(EccentricAccelerations,bins = 25)
-plt.xlabel("Eccentric Accelerations")
-plt.ylabel("Frequency")
+plt.plot(Time,EccentricAccelerations[0].T)
 plt.show()
+
+# plt.hist(EccentricAccelerations,bins = 25)
+# plt.xlabel("Eccentric Accelerations")
+# plt.ylabel("Frequency")
+# plt.show()
