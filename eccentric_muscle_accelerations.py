@@ -428,7 +428,7 @@ Angle2Splines = AngleSplines[1]
 Angle3Splines = AngleSplines[2]
 StartTime = time.time()
 EccentricAccelerations = []
-for i in [random.randint(0,100000)]: #range(len(Angle1Splines)):
+for i in [2803]: #range(len(Angle1Splines)):
 	EccentricAccelerations.append(eccentric_muscle_acceleration(Angle1Splines[i],Angle2Splines[i],Angle3Splines[i],Time))
 	statusbar(i,len(Angle1Splines),StartTime=StartTime,Title = "Ecc. Accel.")
 
