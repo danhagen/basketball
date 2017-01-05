@@ -132,7 +132,13 @@ data = np.array(data)
 bins = 50
 # Plot for comparison
 plt.figure(figsize=(12,8))
-plt.hist(data,normed = True, bins = bins)
+plt.hist(data/5501,normed = 1, bins = bins)
+ax = plt.gca()
+# Save plot limits
+dataYLim = ax.get_ylim()
+
+plt.figure(figsize=(12,8))
+plt.hist(data/5501,normed = 1, bins = bins,histtype='step',cumulative=True,color = 'k',lw = 1)
 ax = plt.gca()
 # Save plot limits
 dataYLim = ax.get_ylim()
