@@ -9,7 +9,7 @@ import pickle
 import time
 
 matplotlib.rcParams['figure.figsize'] = (16.0, 12.0)
-matplotlib.style.use('ggplot')
+matplotlib.style.use('classic')
 
 # Create models from data
 def best_fit_distribution(data, bins=200, ax=None):
@@ -130,41 +130,55 @@ data = pickle.load(open("2804ErrorDistribution.pkl","rb"))
 data.remove(0.0)
 data = np.array(data)
 bins = 50
-# Plot for comparison
-plt.figure(figsize=(12,8))
-plt.hist(data/5501,normed = 1, bins = bins)
-ax = plt.gca()
-# Save plot limits
-dataYLim = ax.get_ylim()
+# # Plot for comparison
+# plt.figure(figsize=(12,8))
+# plt.hist(data/5501,normed = 1, bins = bins)
+# ax = plt.gca()
+# # Save plot limits
+# dataYLim = ax.get_ylim()
+
+# plt.figure(figsize=(12,8))
+# plt.hist(data/5501,normed = 1, bins = bins,histtype='step',cumulative=True,color = 'k',lw = 1)
+# ax = plt.gca()
+# # Save plot limits
+# dataYLim = ax.get_ylim()
+
+# # Find best fit distribution
+# best_fit_name, best_fir_paramms = best_fit_distribution(data, bins, ax)
+# best_dist = getattr(st, best_fit_name)
+
+# # Update plots
+# ax.set_ylim(dataYLim)
+# ax.set_title('Error Distribution For Trial 2804')
+# ax.set_xlabel('Sum of Error')
+# ax.set_ylabel('Frequency')
+
+# # Make PDF
+# pdf = make_pdf(best_dist, best_fir_paramms)
+
+# # Display
+# plt.figure(figsize=(12,8))
+# ax = pdf.plot(lw=2, label='PDF', legend=True)
+# plt.hist(data,normed = True, bins=bins)
+
+# param_names = (best_dist.shapes + ', loc, scale').split(', ') if best_dist.shapes else ['loc', 'scale']
+# param_str = ', '.join(['{}={:0.2f}'.format(k,v) for k,v in zip(param_names, best_fir_paramms)])
+# dist_str = '{}({})'.format(best_fit_name, param_str)
+
+# ax.set_title(u'Error Distribution For Trial 2804\nwith best fit distribution \n' + dist_str)
+# ax.set_xlabel('Sum of Error')
+# ax.set_ylabel('Frequency')
 
 plt.figure(figsize=(12,8))
-plt.hist(data/5501,normed = 1, bins = bins,histtype='step',cumulative=True,color = 'k',lw = 1)
-ax = plt.gca()
-# Save plot limits
-dataYLim = ax.get_ylim()
-
-# Find best fit distribution
-best_fit_name, best_fir_paramms = best_fit_distribution(data, bins, ax)
-best_dist = getattr(st, best_fit_name)
-
-# Update plots
-ax.set_ylim(dataYLim)
-ax.set_title('Error Distribution For Trial 2804')
-ax.set_xlabel('Sum of Error')
-ax.set_ylabel('Frequency')
-
-# Make PDF
-pdf = make_pdf(best_dist, best_fir_paramms)
-
-# Display
-plt.figure(figsize=(12,8))
-ax = pdf.plot(lw=2, label='PDF', legend=True)
-plt.hist(data,normed = True, bins=bins)
-
-param_names = (best_dist.shapes + ', loc, scale').split(', ') if best_dist.shapes else ['loc', 'scale']
-param_str = ', '.join(['{}={:0.2f}'.format(k,v) for k,v in zip(param_names, best_fir_paramms)])
-dist_str = '{}({})'.format(best_fit_name, param_str)
-
-ax.set_title(u'Error Distribution For Trial 2804\nwith best fit distribution \n' + dist_str)
-ax.set_xlabel('Sum of Error')
-ax.set_ylabel('Frequency')
+gamma = st.gamma
+a,loc,b = gamma.fit(data/5501)
+param = (a,loc,b)
+x = np.linspace(0,(data/5501).max(),10000)
+pdf_fitted = gamma.pdf(x,*param)
+plt.plot(x,pdf_fitted,'r',lw=2)
+plt.hist(data/5501,normed=True,bins=50,facecolor = '#BFD6D5')
+ax1 = plt.gca()
+ax2 = ax1.twinx()
+cdf_fitted = gamma.cdf(x,param[0],loc=param[1],scale=param[2])
+ax2.plot(x,cdf_fitted,'k',lw=3)
+plt.show()
