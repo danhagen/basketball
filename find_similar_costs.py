@@ -134,102 +134,70 @@ class Spline:
 		result = np.max(maxima) <= y_max and np.min(minima) >= y_min
 		return(result)
 
-def plot_many_trajectories(reference_trial_number, additional_trial_numbers,together = False):
-	"""
-	trialnumbers must be a list
-
-	"""
-
+def find_similar_costs(shotnumber,threshold):
 	import numpy as np 
-	import matplotlib.pyplot as plt 
 	import pickle
-	import matplotlib as mpl 
-	import time
 	import random
+	import matplotlib.pyplot as plt 
+	import time
 
-	mpl.rcParams['pdf.fonttype'] = 42
-	mpl.rcParams['xtick.direction'] = 'out'
-	mpl.rcParams['ytick.direction'] = 'out'
+	shotnumber -= 1
+	# dt = 0.0001
+	# Time = np.arange(0,0.55,dt)
+	# Splines = pickle.load(open('AllAngleSplines.pkl','rb'))
+	# Angle1Spline = Splines[0][shotnumber]
+	# Angle2Spline = Splines[1][shotnumber]
+	# Angle3Spline = Splines[2][shotnumber]
+	# def XY(A1,A2,A3,Time):
+	# 	HeightInInches = 71
+	# 	Height = HeightInInches*2.54
+	# 	ShoulderToElbowLength = 0.186*Height
+	# 	ForearmLength = 0.146*Height
+	# 	HandLength = 0.108*Height
+	# 	a1,a2,a3 = A1.pp_func(Time),A2.pp_func(Time),A3.pp_func(Time)
+	# 	X = [ShoulderToElbowLength*np.sin(a1[i])+ForearmLength*np.sin(a1[i]+a2[i])+HandLength*np.sin(a1[i]+a2[i]-a3[i]) for i in range(len(Time))]
+	# 	Y = [-ShoulderToElbowLength*np.cos(a1[i])-ForearmLength*np.cos(a1[i]+a2[i])-HandLength*np.cos(a1[i]+a2[i]-a3[i]) for i in range(len(Time))]
+	# 	return(np.array(X),np.array(Y))
 
-	if type(additional_trial_numbers) == int: additional_trial_numbers = [additional_trial_numbers]
-	assert type(additional_trial_numbers) == list, "additional_trial_numbers must be a list"
+	# gx,gy = XY(Angle1Spline,Angle2Spline,Angle3Spline,Time)
 
-	reference_trial_number -= 1
-	dt = 0.0001
-	Time = np.arange(0,0.55,dt)
-	Splines = pickle.load(open('AllAngleSplines.pkl','rb'))
-	Angle1Spline = Splines[0][reference_trial_number]
-	Angle2Spline = Splines[1][reference_trial_number]
-	Angle3Spline = Splines[2][reference_trial_number]
+	xmax = 125**0.5
+	ymax = 125**0.5
+	numberofbins = 25
+	xbinwidth = xmax/numberofbins
+	ybinwidth = ymax/numberofbins
+	[eccSOS2, conSOS2] = pickle.load(open('ALLSumOfSquares2.pkl','rb'))
+	ecc_norm, con_norm = eccSOS2**0.5, conSOS2**0.5
+	ref_ecc_norm, ref_con_norm = eccSOS2[shotnumber]**0.5,conSOS2[shotnumber]**0.5
+	_,xedges,yedges = np.histogram2d(ecc_norm,con_norm,bins = [np.arange(0,xmax,xbinwidth),np.arange(0,ymax,ybinwidth)])
+	# plt.hist2d(eccSOS2**0.5,conSOS2**0.5,bins = [np.arange(0,xmax,xbinwidth),np.arange(0,ymax,ybinwidth)])
+	# plt.show()
+	# xbin_center = (xbin-1/2)*xbinwidth
+	# ybin_center = (ybin-1/2)*ybinwidth
+	possible_values = []
+	for i in range(len(ecc_norm)):
+		if np.sqrt((ecc_norm[i]-ref_ecc_norm)**2+(con_norm[i]-ref_con_norm)**2) <= threshold:
+				possible_values.append([i+1,ecc_norm[i],con_norm[i],np.sqrt((ecc_norm[i]-ref_ecc_norm)**2+(con_norm[i]-ref_con_norm)**2)])
 
-	def XY(A1,A2,A3,Time):
-		HeightInInches = 71
-		Height = HeightInInches*2.54
-		ShoulderToElbowLength = 0.186*Height
-		ForearmLength = 0.146*Height
-		HandLength = 0.108*Height
-		a1,a2,a3 = A1.pp_func(Time),A2.pp_func(Time),A3.pp_func(Time)
-		X = [ShoulderToElbowLength*np.sin(a1[i])+ForearmLength*np.sin(a1[i]+a2[i])+HandLength*np.sin(a1[i]+a2[i]-a3[i]) for i in range(len(Time))]
-		Y = [-ShoulderToElbowLength*np.cos(a1[i])-ForearmLength*np.cos(a1[i]+a2[i])-HandLength*np.cos(a1[i]+a2[i]-a3[i]) for i in range(len(Time))]
-		return(np.array(X),np.array(Y))
-
-	Xref,Yref = XY(Angle1Spline,Angle2Spline,Angle3Spline,Time)
-	N = len(additional_trial_numbers)
-	if N<=5:
-		row,col = 1,N
-	else:
-		col = 5
-		if N%5 == 0:
-			row = int(N/5)
-		else:
-			row = int((N-N%5)/5 + 1)
-	def remove_axes(ax):
-		ax.spines['left'].set_color('none')
-		ax.spines['right'].set_color('none')
-		ax.spines['bottom'].set_color('none')
-		ax.spines['top'].set_color('none')
-		plt.yticks([])
-		plt.tick_params(
-		    axis='both',          # changes apply to both axes
-		    which='both',      # both major and minor ticks are affected
-		    bottom='off',      # ticks along the bottom edge are off
-		    top='off',         # ticks along the top edge are off
-		    right = 'off',		# ticks along the right edge are off
-		    left = 'off',		# ticks along the left edge are off
-		    labelbottom='off') # labels along the bottom edge are off
-		ax.set_aspect('equal', 'datalim')
-	if together == True:
-		plt.figure()
-		StartTime = time.time()
-		for i in range(N):
-			A1,A2,A3 = Splines[0][additional_trial_numbers[i]],Splines[1][additional_trial_numbers[i]],Splines[2][additional_trial_numbers[i]]
-			X,Y = XY(A1,A2,A3,Time)
-			plt.plot(X,Y,color = '#BFD6D5')
-			statusbar = '[' + '\u25a0'*int((i+1)/(N/50)) + '\u25a1'*(50-int((i+1)/(N/50))) + '] '
-			print(statusbar + '{0:1.1f}'.format((i+1)/N*100) + '% complete, ' + '{0:1.1f}'.format(time.time() - StartTime) + 'sec        \r', end='')
-		print('\n')
-		plt.plot(Xref,Yref,color = '#71C177',lw = 2)
-		ax = plt.gca()
-		remove_axes(ax)
-	else:
-		plt.figure()
-		ax = plt.gca()
-		plt.suptitle('Trial Number ' + str(reference_trial_number+1))
-		StartTime = time.time()
-		for i in range(N):
-			plt.subplot(row,col,i+1)
-			plt.plot(Xref,Yref,color = '#71C177',lw = 2)
-			A1,A2,A3 = Splines[0][additional_trial_numbers[i]],Splines[1][additional_trial_numbers[i]],Splines[2][additional_trial_numbers[i]]
-			X,Y = XY(A1,A2,A3,Time)
-			plt.plot(X,Y,color = '0.5')
-			ax = plt.gca()
-			ax.set_title('Trial Number ' + str(additional_trial_numbers[i]))
-			remove_axes(ax)
-			statusbar = '[' + '\u25a0'*int((i+1)/(N/50)) + '\u25a1'*(50-int((i+1)/(N/50))) + '] '
-			print(statusbar + '{0:1.1f}'.format((i+1)/N*100) + '% complete, ' + '{0:1.1f}'.format(time.time() - StartTime) + 'sec        \r', end='')
-		print('\n')
+	# def error(gx,gy,x,y):
+	# 	error_value = np.sum(((gx-x)**2+(gy-y)**2)**0.5)
+	# 	return(error_value)
+	def getKey(item):
+		sorted_key = 3
+		return(item[sorted_key])
 	
-
-	
-
-			
+	sorted_possible_values = sorted(possible_values, key=getKey)
+	sorted_index = [el[0] for el in sorted_possible_values]
+	return(sorted_possible_values[1:],sorted_index[1:])
+	# Error = []
+	# StartTime = time.time()
+	# for i in range(len(sorted_possible_values)):
+	# 	A1,A2,A3 = Splines[0][sorted_possible_values[i][0]],Splines[1][sorted_possible_values[i][0]],Splines[2][sorted_possible_values[i][0]]
+	# 	x,y = XY(A1,A2,A3,Time)
+	# 	Error.append(error(gx,gy,x,y))
+	# 	statusbar = '[' + '\u25a0'*int((i+1)/(len(possible_values)/50)) + '\u25a1'*(50-int((i+1)/(len(possible_values)/50))) + '] '
+	# 	print(statusbar + '{0:1.1f}'.format((i+1)/len(possible_values)*100) + '% complete, ' + '{0:1.1f}'.format(time.time() - StartTime) + 'sec        \r', end='')
+	# print('\n')
+	# index = [x for (y,x) in sorted(zip(Error, possible_values))]
+	# error = [Error[possible_values.index(y)] for y in index]	
+	# return(index,error)
