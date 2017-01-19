@@ -135,6 +135,10 @@ class Spline:
 		return(result)
 
 def find_similar_costs(shotnumber,threshold):
+	"""
+	Takes in shotnumber and cost threshold value and returns the sorted cost values 
+	and sorted index values for ALLSumOfSquares2.pkl
+	"""
 	import numpy as np 
 	import pickle
 	import random

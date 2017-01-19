@@ -133,34 +133,55 @@ class Spline:
 			minima = y_min
 		result = np.max(maxima) <= y_max and np.min(minima) >= y_min
 		return(result)
-
-def plot_many_trajectories(reference_trial_number, additional_trial_numbers,together = False):
+def statusbar(i,N,**kwargs):
 	"""
-	trialnumbers must be a list
+	i is the current iteration (must be an int) and N is the length of 
+	the range (must be an int). i must also be in [0,N). 
+
+	~~~~~~~~~~~~~~
+	**kwargs
+	~~~~~~~~~~~~~~
+
+	StartTime should equal time.time() and should be defined before your
+	loop to ensure that you get an accurate representation of elapsed time.
+
+	Title should be a str that will be displayed before the statusbar. Title
+	should be no longer than 25 characters.
+
+	~~~~~~~~~~~~~~
+
+	NOTE: you should place a print('\n') after the loop to ensure you
+	begin printing on the next line.
 
 	"""
-
-	import numpy as np 
-	import matplotlib.pyplot as plt 
-	import pickle
-	import matplotlib as mpl 
 	import time
+	StartTime = kwargs.get("StartTime",False)
+	Title = kwargs.get("Title",'')
+
+	assert type(i)==int, "i must be an int"
+	assert type(N)==int, "N must be an int"
+	assert N>i, "N must be greater than i"
+	assert N>0, "N must be a positive integer"
+	assert i>=0, "i must not be negative (can be zero)"
+	assert type(Title) == str, "Title should be a string"
+	assert len(Title) <= 25, "Title should be less than 25 characters"
+	if Title != '': Title = ' '*(25-len(Title)) + Title + ': '
+	statusbar = Title +'[' + '\u25a0'*int((i+1)/(N/50)) + '\u25a1'*(50-int((i+1)/(N/50))) + '] '
+	if StartTime != False:
+		print(statusbar + '{0:1.1f}'.format((i+1)/N*100) + '% complete, ' + '{0:1.1f}'.format(time.time() - StartTime) + 'sec        \r', end='')
+	else:
+		print(statusbar + '{0:1.1f}'.format((i+1)/N*100) + '% complete           \r',end = '')
+def find_similar_XY(shotnumber):
+	import numpy as np 
+	import pickle
 	import random
+	import matplotlib.pyplot as plt 
+	import time
 
-	mpl.rcParams['pdf.fonttype'] = 42
-	mpl.rcParams['xtick.direction'] = 'out'
-	mpl.rcParams['ytick.direction'] = 'out'
-
-	if type(additional_trial_numbers) == int: additional_trial_numbers = [additional_trial_numbers]
-	assert type(additional_trial_numbers) == list, "additional_trial_numbers must be a list"
-
-	reference_trial_number -= 1
+	shotnumber -= 1
 	dt = 0.0001
 	Time = np.arange(0,0.55,dt)
 	Splines = pickle.load(open('AllAngleSplines.pkl','rb'))
-	Angle1Spline = Splines[0][reference_trial_number]
-	Angle2Spline = Splines[1][reference_trial_number]
-	Angle3Spline = Splines[2][reference_trial_number]
 
 	def XY(A1,A2,A3,Time):
 		HeightInInches = 71
@@ -173,65 +194,24 @@ def plot_many_trajectories(reference_trial_number, additional_trial_numbers,toge
 		Y = [-ShoulderToElbowLength*np.cos(a1[i])-ForearmLength*np.cos(a1[i]+a2[i])-HandLength*np.cos(a1[i]+a2[i]-a3[i]) for i in range(len(Time))]
 		return(np.array(X),np.array(Y))
 
-	Xref,Yref = XY(Angle1Spline,Angle2Spline,Angle3Spline,Time)
-	N = len(additional_trial_numbers)
-	if N<=5:
-		row,col = 1,N
-	else:
-		col = 5
-		if N%5 == 0:
-			row = int(N/5)
-		else:
-			row = int((N-N%5)/5 + 1)
-	def remove_axes(ax):
-		ax.spines['left'].set_color('none')
-		ax.spines['right'].set_color('none')
-		ax.spines['bottom'].set_color('none')
-		ax.spines['top'].set_color('none')
-		plt.yticks([])
-		plt.tick_params(
-		    axis='both',          # changes apply to both axes
-		    which='both',      # both major and minor ticks are affected
-		    bottom='off',      # ticks along the bottom edge are off
-		    top='off',         # ticks along the top edge are off
-		    right = 'off',		# ticks along the right edge are off
-		    left = 'off',		# ticks along the left edge are off
-		    labelbottom='off') # labels along the bottom edge are off
-		ax.set_aspect('equal', 'datalim')
-	if together == True:
-		plt.figure()
-		StartTime = time.time()
-		for i in range(N):
-			A1,A2,A3 = Splines[0][additional_trial_numbers[i]],Splines[1][additional_trial_numbers[i]],Splines[2][additional_trial_numbers[i]]
-			X,Y = XY(A1,A2,A3,Time)
-			plt.plot(X,Y,color = '#BFD6D5')
-			statusbar = '[' + '\u25a0'*int((i+1)/(N/50)) + '\u25a1'*(50-int((i+1)/(N/50))) + '] '
-			print(statusbar + '{0:1.1f}'.format((i+1)/N*100) + '% complete, ' + '{0:1.1f}'.format(time.time() - StartTime) + 'sec        \r', end='')
-		print('\n')
-		plt.plot(Xref,Yref,color = '#71C177',lw = 2)
-		ax = plt.gca()
-		remove_axes(ax)
-	else:
-		plt.figure()
-		ax = plt.gca()
-		plt.suptitle('Trial Number ' + str(reference_trial_number+1))
-		StartTime = time.time()
-		for i in range(N):
-			plt.subplot(row,col,i+1)
-			plt.plot(Xref,Yref,color = '#71C177',lw = 2)
-			A1,A2,A3 = Splines[0][additional_trial_numbers[i]],Splines[1][additional_trial_numbers[i]],Splines[2][additional_trial_numbers[i]]
-			X,Y = XY(A1,A2,A3,Time)
-			plt.plot(X,Y,color = '0.5')
-			ax = plt.gca()
-			ax.set_title('Trial Number ' + str(additional_trial_numbers[i]))
-			remove_axes(ax)
-			statusbar = '[' + '\u25a0'*int((i+1)/(N/50)) + '\u25a1'*(50-int((i+1)/(N/50))) + '] '
-			print(statusbar + '{0:1.1f}'.format((i+1)/N*100) + '% complete, ' + '{0:1.1f}'.format(time.time() - StartTime) + 'sec        \r', end='')
-		print('\n')
-	plt.show()
-	
-	
+	def average_residual(gx,gy,x,y):
+		average_residual_value = np.mean(np.sum(((gx-x)**2+(gy-y)**2)**0.5))
+		return(average_residual_value)
 
-	
+	unsorted_index = np.arange(0,len(Splines[0]),1)
+	Angle1Spline = Splines[0][shotnumber]
+	Angle2Spline = Splines[1][shotnumber]
+	Angle3Spline = Splines[2][shotnumber]
+	gx,gy = XY(Angle1Spline,Angle2Spline,Angle3Spline,Time)
 
-			
+	Average_Residuals = []
+	StartTime = time.time()
+	for i in range(len(unsorted_index)):
+		A1,A2,A3 = Splines[0][i],Splines[1][i],Splines[2][i]
+		x,y = XY(A1,A2,A3,Time)
+		Average_Residuals.append(average_residual(gx,gy,x,y))
+		statusbar(i,len(unsorted_index),StartTime=StartTime,Title='Avg. Residual')
+	print('\n')
+	error,index = zip(*sorted(zip(Average_Residuals, unsorted_index)))
+	return(index,error)
+	 
