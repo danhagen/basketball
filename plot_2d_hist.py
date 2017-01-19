@@ -72,4 +72,3 @@ def plot_2d_hist(EucNormHist = False,**kwargs):
 		ax.set_aspect(abs(X1-X0)/abs(Y1-Y0))
 		plt.ylabel('Frequency')
 	
-	plt.show()
