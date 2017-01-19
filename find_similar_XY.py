@@ -195,7 +195,7 @@ def find_similar_XY(shotnumber):
 		return(np.array(X),np.array(Y))
 
 	def average_residual(gx,gy,x,y):
-		average_residual_value = np.mean(np.sum(((gx-x)**2+(gy-y)**2)**0.5))
+		average_residual_value = np.mean(((gx-x)**2+(gy-y)**2)**0.5)
 		return(average_residual_value)
 
 	unsorted_index = np.arange(0,len(Splines[0]),1)
