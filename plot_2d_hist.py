@@ -10,21 +10,27 @@ def plot_2d_hist(EucNormHist = False,**kwargs):
 
 	PlotHistograms = kwargs.get('PlotHistograms',False)
 	assert type(PlotHistograms) == bool, "PlotHistograms must be a boolean"
+	subset_index = kwargs.get("Subset",None)
+	
+
 
 	NumberOfBins = 25
 	EccMax = 125
 	ConcMax = 125
 	[EccSumOfSquares, ConcSumOfSquares] = pickle.load(open('ALLSumOfSquares2.pkl','rb'))
 	if EucNormHist == True: 
-		EccSumOfSquares,ConcSumOfSquares = EccSumOfSquares**0.5, ConcSumOfSquares**0.5
+		EccCost,ConcCost = EccSumOfSquares**0.5, ConcSumOfSquares**0.5
 		EccMax = EccMax**0.5
 		ConcMax = ConcMax**0.5
+	
+	if subset_index != None:
+		assert type(subset_index)==list, "Subset must be a index list"
+		EccCost,ConcCost = EccCost[subset_index],ConcCost[subset_index]
 
 	plt.figure()
-
 	
 	if PlotHistograms == True: plt.subplot(2,2,3)
-	plt.hist2d(EccSumOfSquares,ConcSumOfSquares,bins = [np.arange(0,EccMax,EccMax/NumberOfBins),np.arange(0,ConcMax,ConcMax/NumberOfBins)],\
+	plt.hist2d(EccCost,ConcCost,bins = [np.arange(0,EccMax,EccMax/NumberOfBins),np.arange(0,ConcMax,ConcMax/NumberOfBins)],\
 					norm=matplotlib.colors.LogNorm())
 	ax = plt.gca()
 	ax.spines['right'].set_visible(False)
@@ -41,7 +47,7 @@ def plot_2d_hist(EucNormHist = False,**kwargs):
 	
 	if PlotHistograms == True:
 		plt.subplot(2,2,4)
-		plt.hist(ConcSumOfSquares,bins = np.arange(0,ConcMax,ConcMax/NumberOfBins), normed=True, color = '0.75',orientation = 'horizontal')
+		plt.hist(ConcCost,bins = np.arange(0,ConcMax,ConcMax/NumberOfBins), normed=True, color = '0.75',orientation = 'horizontal')
 		ax = plt.gca()
 		ax.spines['right'].set_visible(False)
 		ax.spines['top'].set_visible(False)
@@ -54,7 +60,7 @@ def plot_2d_hist(EucNormHist = False,**kwargs):
 		plt.xlabel('Frequency')
 
 		plt.subplot(2,2,1)
-		plt.hist(EccSumOfSquares,bins = np.arange(0,EccMax,EccMax/NumberOfBins), normed=True, color = '0.75')
+		plt.hist(EccCost,bins = np.arange(0,EccMax,EccMax/NumberOfBins), normed=True, color = '0.75')
 		ax = plt.gca()
 		ax.spines['right'].set_visible(False)
 		ax.spines['top'].set_visible(False)
